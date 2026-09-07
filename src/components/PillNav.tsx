@@ -16,8 +16,9 @@ export function PillNav() {
               key={i.to}
               to={i.to}
               activeOptions={{ exact: i.to === "/" }}
-              className="rounded-full px-5 py-2 text-sm tracking-tight text-ink/60 transition-colors hover:text-ink"
-              activeProps={{ className: "bg-ink text-cream hover:text-cream" }}
+              className="rounded-full px-5 py-2 text-sm tracking-tight transition-colors"
+              inactiveProps={{ className: "text-ink/60 hover:text-ink" }}
+              activeProps={{ className: "bg-ink text-cream" }}
             >
               {i.label}
             </Link>

@@ -56,7 +56,7 @@ function Theater() {
           height={1280}
           className="h-full w-full object-cover opacity-90"
         />
-        <div className="absolute inset-0 flex flex-col justify-between p-10">
+        <div className="absolute inset-0 flex flex-col justify-between p-10 pt-28">
           <span className="font-mono text-xs tracking-[0.25em] text-bone/85 uppercase">
             {spliced ? "PATIENT DEAD" : "PATIENT LIVE"}
           </span>
