@@ -1,0 +1,35 @@
+import { Link } from "@tanstack/react-router";
+
+const items = [
+  { to: "/", label: "Theater" },
+  { to: "/dossier", label: "Dossier" },
+  { to: "/log", label: "Log" },
+] as const;
+
+export function PillNav() {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 top-5 z-50 flex justify-center px-5">
+      <nav className="pointer-events-auto flex w-full max-w-3xl items-center justify-between rounded-full border border-ink/10 bg-cream/85 px-2 py-2 backdrop-blur-md">
+        <div className="flex items-center gap-1">
+          {items.map((i) => (
+            <Link
+              key={i.to}
+              to={i.to}
+              activeOptions={{ exact: i.to === "/" }}
+              className="rounded-full px-5 py-2 text-sm tracking-tight text-ink/60 transition-colors hover:text-ink"
+              activeProps={{ className: "bg-ink text-cream hover:text-cream" }}
+            >
+              {i.label}
+            </Link>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="rounded-full bg-ink px-5 py-2 text-sm tracking-tight text-cream transition-opacity hover:opacity-85"
+        >
+          Connect
+        </button>
+      </nav>
+    </div>
+  );
+}
