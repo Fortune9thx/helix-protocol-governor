@@ -1,6 +1,8 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 import json
+import ipaddress
+from urllib.parse import urlsplit
 
 ALLOWED_FAMILIES = {
     "infinite_approve_drain",
@@ -40,6 +42,51 @@ Rules:
 """
 
 
+def _is_blocked_host(host: str) -> bool:
+    host = host.lower()
+    if host in ("localhost", "0.0.0.0"):
+        return True
+    if host.endswith(".localhost"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        ip = None
+    if ip is None and host.isdigit():
+        try:
+            ip = ipaddress.ip_address(int(host))
+        except (ValueError, OverflowError):
+            ip = None
+    if ip is not None:
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            return True
+    return False
+
+
+def _validate_evidence_url(url: str) -> None:
+    """Every validator fetches caller-supplied evidence URLs independently;
+    refuse anything pointed at localhost, a private/link-local/loopback IP
+    (in dotted or decimal form), or embedded credentials before it ever
+    reaches gl.nondet.web.*. Deterministic string parsing only - safe to run
+    outside the nondet block."""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise Exception("evidence url must be http(s)")
+    if not parts.hostname:
+        raise Exception("evidence url missing host")
+    if parts.username or parts.password:
+        raise Exception("evidence url must not carry credentials")
+    if _is_blocked_host(parts.hostname):
+        raise Exception("evidence url host is not allowed")
+
+
 class Helix(gl.Contract):
     owner: Address
     host: Address
@@ -70,6 +117,10 @@ class Helix(gl.Contract):
     def ingest_threat(self, url_a: str, url_b: str) -> None:
         url_a_local = url_a.strip()
         url_b_local = url_b.strip()
+
+        _validate_evidence_url(url_a_local)
+        if url_b_local:
+            _validate_evidence_url(url_b_local)
 
         def normalize(raw: dict) -> dict:
             family = str(raw.get("threat_family", "noise"))

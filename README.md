@@ -66,7 +66,26 @@ This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://helix-protocol-governor.lovable.app
 
+See [SUBMISSION.md](SUBMISSION.md) for the pitch, [DEMO.md](DEMO.md) for the demo
+script, and [SECURITY.md](SECURITY.md) for the trust model.
+
 ## The GenLayer protocol
+
+```
+  ┌──────────────────┐        reads patches         ┌────────────────┐
+  │   GenomeRegistry  │◄───────────────────────────────│      Helix      │
+  │  (patch storage)  │                                 │  (the governor)  │
+  └──────────────────┘                                 └────────┬─────────┘
+                                                                  │
+                                            reads evidence,       │ apply_mutation()
+                                            reaches consensus,    │ register_organ()
+                                            decides threat family │
+                                                                  ▼
+                                                        ┌────────────────┐
+                                                        │    HostVault    │
+                                                        │  (the patient)  │
+                                                        └────────────────┘
+```
 
 The UI above is wired to a real GenLayer Intelligent Contract stack, not a mock:
 
@@ -90,14 +109,16 @@ inside the contract, reaches validator consensus on `should_act` + `threat_famil
 `patch_id` only (never on free text), then cross-contract-calls `HostVault.apply_mutation`.
 `infinite_approve_drain → SHED_SKIN` (freeze + splice HostVault's own running code to v2).
 `permit_phishing_kit → GROW_ORGAN` (spawn a `Watchdog` child). A frozen `HostVault.approve`
-reverts `FROZEN_BY_HELIX`.
+reverts `FROZEN_BY_HELIX`. Evidence URLs are validated against localhost/private/
+loopback hosts before any validator fetches them — see [SECURITY.md](SECURITY.md).
 
 ### Run the contracts
 
 ```bash
 pip install -r requirements.txt
 genvm-lint check contracts/helix.py   # repeat per contract
-pytest tests/direct/ -v                # 12 tests: family->patch mapping + HostVault mutation mechanics
+pytest tests/direct/ -v                # 25 tests: family->patch mapping, HostVault mutation
+                                         # mechanics, GenomeRegistry access control, evidence-URL SSRF guards
 ```
 
 ### Deploy and wire the app to it

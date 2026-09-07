@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-contracts:
+    name: Lint Contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: genvm-lint check contracts/genome_registry.py
+      - run: genvm-lint check contracts/host_vault.py
+      - run: genvm-lint check contracts/host_vault_v2.py
+      - run: genvm-lint check contracts/watchdog.py
+      - run: genvm-lint check contracts/helix.py
+
+  test-direct:
+    name: Direct Mode Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: pytest tests/direct/ -v
+
+  typecheck-frontend:
+    name: Typecheck Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bunx tsc --noEmit
