@@ -21,12 +21,12 @@ export const Route = createFileRoute("/dossier")({
 });
 
 function Dossier() {
-  const [threat, setThreat] = useState("");
-  const [evidence, setEvidence] = useState("");
+  const [threat, setThreat] = useState("https://");
+  const [evidence, setEvidence] = useState("https://");
   const [dump, setDump] = useState<string | null>(null);
 
   return (
-    <main className="min-h-screen bg-cream px-8 pt-32 pb-24 md:px-14">
+    <main className="min-h-screen bg-cream px-8 pt-32 pb-36 md:px-14">
       <h1 className="text-[16vw] leading-[0.84] text-ink md:text-[8vw]">Dossier</h1>
       <p className="mt-6 max-w-sm text-base text-ink/70">Evidence the jury fetched.</p>
       <div className="mt-8 h-px w-full bg-ink/15" />
@@ -37,7 +37,7 @@ function Dossier() {
         width={1920}
         height={960}
         loading="lazy"
-        className="mt-10 h-[300px] w-full object-cover md:h-[420px]"
+        className="mt-10 h-[300px] w-full object-cover md:h-[360px]"
       />
 
       <div className="mt-14 grid max-w-4xl gap-8 md:grid-cols-2">
@@ -83,11 +83,13 @@ function Dossier() {
         Ingest threat
       </button>
 
-      {dump && (
-        <pre className="mt-10 max-w-3xl overflow-x-auto border-t border-ink/15 pt-6 font-mono text-xs leading-relaxed text-ink/75">
-          {dump}
-        </pre>
-      )}
+      <pre className="mt-10 max-w-3xl overflow-x-auto border-t border-ink/15 pt-6 font-mono text-xs leading-relaxed text-ink/75">
+        {dump ?? [
+          "should_act   : —",
+          "family       : —",
+          "patch        : —",
+        ].join("\n")}
+      </pre>
     </main>
   );
 }

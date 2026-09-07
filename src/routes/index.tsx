@@ -38,7 +38,7 @@ function Theater() {
           <button
             type="button"
             disabled={spliced}
-            className="rounded-full bg-ink px-8 py-4 text-base tracking-tight text-cream transition-opacity hover:opacity-85 disabled:opacity-40"
+            className="inline-flex min-w-[12rem] items-center justify-center whitespace-nowrap rounded-full bg-ink px-8 py-4 text-base tracking-tight text-cream transition-opacity hover:opacity-85 disabled:opacity-40"
           >
             {spliced ? "Frozen by Helix" : "Approve 100 ETH"}
           </button>
@@ -56,20 +56,22 @@ function Theater() {
           height={1280}
           className="h-full w-full object-cover opacity-90"
         />
-        <div className="absolute inset-0 flex flex-col justify-between p-10 pt-28">
-          <span className="font-mono text-xs tracking-[0.25em] text-bone/85 uppercase">
-            {spliced ? "PATIENT DEAD" : "PATIENT LIVE"}
-          </span>
-          <div className="flex items-center gap-3">
-            {[0, 1, 2, 3, 4].map((i) => (
-              <span
-                key={i}
-                className={
-                  "h-2 w-2 rounded-[1px] " + (i < 4 ? "bg-bone" : "bg-bone/25")
-                }
-              />
-            ))}
-            <span className="ml-3 font-mono text-xs tracking-[0.2em] text-bone/60">4 / 5</span>
+        <div className="absolute inset-0 p-10 pt-28">
+          <div className="flex flex-col items-start gap-5">
+            <span className="font-mono text-xs tracking-[0.25em] text-bone/85 uppercase">
+              {spliced ? "PATIENT DEAD" : "PATIENT LIVE"}
+            </span>
+            <div className="flex items-center gap-3">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  className={
+                    "h-2 w-2 rounded-[1px] " + (i < 4 ? "bg-bone" : "bg-bone/25")
+                  }
+                />
+              ))}
+              <span className="ml-3 font-mono text-xs tracking-[0.2em] text-bone/60">4 / 5</span>
+            </div>
           </div>
         </div>
       </section>
