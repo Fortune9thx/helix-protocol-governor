@@ -228,7 +228,7 @@ class Helix(gl.contract.Contract):
             new_code = registry.view().get_patch_code("SHED_SKIN")
 
         host = gl.contract.get_at(self.host)
-        host.emit(on="accepted").apply_mutation(
+        host.emit(on="decided").apply_mutation(
             decision["patch_id"],
             decision["threat_family"],
             decision["rationale"],
@@ -248,7 +248,7 @@ class Helix(gl.contract.Contract):
                     salt_nonce=salt,
                 )
                 self.last_organ = organ
-                host.emit(on="accepted").register_organ(organ.as_hex)
+                host.emit(on="decided").register_organ(organ.as_hex)
             except Exception:
                 pass
 
@@ -258,7 +258,7 @@ class Helix(gl.contract.Contract):
             raise gl.vm.UserError("not owner")
         self.last_organ = Address(organ)
         host = gl.contract.get_at(self.host)
-        host.emit(on="accepted").register_organ(organ)
+        host.emit(on="decided").register_organ(organ)
 
     @gl.public.view
     def get_status(self) -> str:

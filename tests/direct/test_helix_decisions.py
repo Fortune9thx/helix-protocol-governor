@@ -33,7 +33,7 @@ def _deploy_helix(direct_deploy, direct_vm, direct_owner):
         HOST_PLACEHOLDER,
         REGISTRY_PLACEHOLDER,
         WATCHDOG_PLACEHOLDER_CODE,
-        sdk_version="v0.2.16",
+        sdk_version="v0.6.0-rc3",
     )
 
 

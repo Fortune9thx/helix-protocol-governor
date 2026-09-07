@@ -78,7 +78,11 @@ export async function readHelixStatus(): Promise<HelixStatus> {
   return parseHelixStatus(raw);
 }
 
-async function writeWithFees(
+/**
+ * HostVault.approve never emits an internal message, so a flat network-price
+ * fee estimate is enough.
+ */
+async function writeWithFlatFees(
   account: string,
   address: string,
   functionName: string,
@@ -98,14 +102,41 @@ async function writeWithFees(
   return hash as unknown as string;
 }
 
+/**
+ * Helix.ingest_threat conditionally emits an internal message to
+ * HostVault.apply_mutation (and, on GROW_ORGAN, deploys + registers a
+ * Watchdog). A flat fee estimate has no budget allocated for that internal
+ * message and the write reverts with "fee no_matching_allocation # internal"
+ * - confirmed live. estimateTransactionFeesForWrite runs a real simulation of
+ * this exact call first, so its returned messageAllocations covers whatever
+ * the leader's run actually triggers.
+ */
+async function writeWithSimulatedFees(
+  account: string,
+  address: string,
+  functionName: string,
+  kwargs: object,
+): Promise<string> {
+  const client = await writeClient(account);
+  const callArgs = { address: address as `0x${string}`, functionName, args: [], kwargs, value: 0n };
+  const estimate = await client.estimateTransactionFeesForWrite(callArgs as never);
+  const fees = {
+    distribution: estimate.distribution,
+    messageAllocations: estimate.messageAllocations,
+    feeValue: estimate.feeValue,
+  };
+  const hash = await client.writeContract({ ...callArgs, fees } as never);
+  return hash as unknown as string;
+}
+
 /** HostVault.approve(spender, amount). Reverts FROZEN_BY_HELIX once spliced. */
 export async function approve(account: string, spender: string, amountWei: bigint): Promise<string> {
-  return writeWithFees(account, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
+  return writeWithFlatFees(account, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
 }
 
 /** Helix.ingest_threat(url_a, url_b) — runs the leader/validator consensus round. */
 export async function ingestThreat(account: string, urlA: string, urlB: string): Promise<string> {
-  return writeWithFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
+  return writeWithSimulatedFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
 }
 
 /**

@@ -18,7 +18,7 @@ SHED_SKIN_CONSTITUTION = (
 
 def _deploy_host(direct_deploy, direct_vm, direct_owner):
     direct_vm.sender = direct_owner
-    return direct_deploy("contracts/host_vault.py", GENESIS_CONSTITUTION, sdk_version="v0.2.16")
+    return direct_deploy("contracts/host_vault.py", GENESIS_CONSTITUTION, sdk_version="v0.6.0-rc3")
 
 
 def test_genesis_state_and_approve_before_mutation(direct_vm, direct_deploy, direct_owner, direct_bob):

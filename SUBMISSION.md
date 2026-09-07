@@ -16,7 +16,7 @@ https://explorer-studio-dev.genlayer.com/
 |---|---|
 | GenomeRegistry | `0x8917000947c06B57CDbc10d79f544445c096913d` |
 | HostVault | `0xba958e66e8a488C557A291c84980681e90A87EF3` |
-| Helix | `0xbd30c4E40Ec1F0255953c69152c5096F42089a55` |
+| Helix | `0xa74F459E56C56669d8ac4Cf352E9484471E9cd03` |
 
 ## What it is
 
@@ -84,6 +84,13 @@ read the advisory and already voted.
   control, and the SSRF suite above.
 - CI (`.github/workflows/ci.yml`) actually runs `genvm-lint` + `pytest` + a frontend
   typecheck on every push, not just locally.
+- The full loop has been verified live on Studio Devnet, not just in direct-mode
+  tests: a real `ingest_threat` call against the drain-advisory evidence URL fetched
+  the page, classified it `infinite_approve_drain` at 93% confidence, reached
+  `MAJORITY_AGREE`/`FINALIZED` validator consensus, and cross-contract-called
+  `HostVault.apply_mutation` — `genome_version` moved 1→2, `frozen` flipped to 1,
+  `max_approval` dropped to 0, and the constitution was rewritten. A subsequent
+  `approve()` against the same live `HostVault` genuinely reverted `FROZEN_BY_HELIX`.
 
 ## UI
 
