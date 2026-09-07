@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { PillNav } from "../components/PillNav";
+import { HelixProvider, useHelix } from "../lib/helix-state";
 
 function NotFoundComponent() {
   return (
@@ -77,16 +79,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "HELIX — Live vault governor" },
+      { name: "description", content: "HELIX is a live vault governor: autonomous protocol, genome governor." },
+      
+      { property: "og:title", content: "HELIX — Live vault governor" },
+      { property: "og:description", content: "Autonomous protocol. Genome governor." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
       {
         rel: "stylesheet",
         href: appCss,
@@ -114,13 +122,38 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function SpliceControl() {
+  const { spliced, setSpliced } = useHelix();
+  return (
+    <button
+      type="button"
+      onClick={() => setSpliced(!spliced)}
+      aria-pressed={spliced}
+      className="fixed bottom-6 left-6 z-50 flex items-center gap-3 rounded-full border border-ink/15 bg-cream/85 px-5 py-2.5 backdrop-blur-md"
+    >
+      <span
+        className={
+          "h-2 w-2 rounded-[1px] " + (spliced ? "bg-ink" : "bg-ink/25")
+        }
+      />
+      <span className="font-mono text-xs tracking-[0.18em] text-ink/70 uppercase">
+        Spliced preview
+      </span>
+    </button>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <HelixProvider>
+        <PillNav />
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <SpliceControl />
+      </HelixProvider>
     </QueryClientProvider>
   );
 }
