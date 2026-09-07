@@ -1,21 +1,21 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
-from genlayer import *
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
+from genlayer.types import *
 
-class GenomeRegistry(gl.Contract):
+
+class GenomeRegistry(gl.contract.Contract):
     owner: Address
-    patch_title: TreeMap[str, str]
-    patch_code: TreeMap[str, str]
-    patch_constitution: TreeMap[str, str]
+    patch_title: gl.storage.TreeMap[str, str]
+    patch_code: gl.storage.TreeMap[str, str]
+    patch_constitution: gl.storage.TreeMap[str, str]
 
     def __init__(self):
         self.owner = gl.message.sender_address
-        self.patch_title = TreeMap()
-        self.patch_code = TreeMap()
-        self.patch_constitution = TreeMap()
 
     def _only_owner(self) -> None:
         if gl.message.sender_address != self.owner:
-            raise Exception("not owner")
+            raise gl.vm.UserError("not owner")
 
     @gl.public.write
     def register_patch(self, patch_id: str, title: str, constitution: str, code: str) -> None:

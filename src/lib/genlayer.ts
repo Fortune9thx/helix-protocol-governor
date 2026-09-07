@@ -8,7 +8,7 @@
 
 const env = import.meta.env as Record<string, string | undefined>;
 
-export const CHAIN_NAME = env["VITE_GENLAYER_CHAIN"] ?? "testnetBradbury";
+export const CHAIN_NAME = env["VITE_GENLAYER_CHAIN"] ?? "studioDevnet";
 export const HOST_VAULT_ADDRESS = env["VITE_HOST_VAULT_ADDRESS"] ?? "";
 export const HELIX_ADDRESS = env["VITE_HELIX_ADDRESS"] ?? "";
 export const GENOME_REGISTRY_ADDRESS = env["VITE_GENOME_REGISTRY_ADDRESS"] ?? "";
@@ -31,7 +31,15 @@ export function getEthereum(): EthereumProvider | null {
 
 export async function getChain() {
   const chains = await import("genlayer-js/chains");
-  return CHAIN_NAME === "studionet" ? chains.studionet : chains.testnetBradbury;
+  switch (CHAIN_NAME) {
+    case "studionet":
+      return chains.studionet;
+    case "testnetBradbury":
+      return chains.testnetBradbury;
+    case "studioDevnet":
+    default:
+      return chains.studioDevnet;
+  }
 }
 
 /**

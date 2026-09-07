@@ -1,5 +1,7 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
-from genlayer import *
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
+from genlayer.types import *
 import json
 import ipaddress
 from urllib.parse import urlsplit
@@ -78,16 +80,16 @@ def _validate_evidence_url(url: str) -> None:
     outside the nondet block."""
     parts = urlsplit(url)
     if parts.scheme not in ("http", "https"):
-        raise Exception("evidence url must be http(s)")
+        raise gl.vm.UserError("evidence url must be http(s)")
     if not parts.hostname:
-        raise Exception("evidence url missing host")
+        raise gl.vm.UserError("evidence url missing host")
     if parts.username or parts.password:
-        raise Exception("evidence url must not carry credentials")
+        raise gl.vm.UserError("evidence url must not carry credentials")
     if _is_blocked_host(parts.hostname):
-        raise Exception("evidence url host is not allowed")
+        raise gl.vm.UserError("evidence url host is not allowed")
 
 
-class Helix(gl.Contract):
+class Helix(gl.contract.Contract):
     owner: Address
     host: Address
     registry: Address
@@ -103,7 +105,7 @@ class Helix(gl.Contract):
         self.owner = gl.message.sender_address
         self.host = Address(host)
         self.registry = Address(registry)
-        self.mutation_count = u256(0)
+        self.mutation_count = 0
         self.last_family = ""
         self.last_patch = "NONE"
         self.last_rationale = ""
@@ -185,7 +187,7 @@ class Helix(gl.Contract):
                 return merge(normalized[0], normalized[1])
             return normalized[0]
 
-        def validator_fn(leader_result) -> bool:
+        def validator_fn(leader_result: gl.vm.Result) -> bool:
             if not isinstance(leader_result, gl.vm.Return):
                 return False
             data = leader_result.calldata
@@ -207,17 +209,17 @@ class Helix(gl.Contract):
                 and mine["patch_id"] == data["patch_id"]
             )
 
-        decision = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
+        decision = gl.vm.run_nondet(leader_fn, validator_fn)
         self.last_family = str(decision["threat_family"])
         self.last_patch = str(decision["patch_id"])
         self.last_rationale = str(decision["rationale"])
         self.last_urls = url_a_local + " " + url_b_local
-        self.mutation_count = self.mutation_count + u256(1)
+        self.mutation_count = self.mutation_count + 1
 
         if (not decision["should_act"]) or decision["patch_id"] == "NONE":
             return
 
-        registry = gl.get_contract_at(self.registry)
+        registry = gl.contract.get_at(self.registry)
         new_constitution = registry.view().get_constitution(decision["patch_id"])
         new_code = ""
         freeze = decision["patch_id"] in ("HALT", "SHED_SKIN")
@@ -225,7 +227,7 @@ class Helix(gl.Contract):
         if decision["patch_id"] == "SHED_SKIN":
             new_code = registry.view().get_patch_code("SHED_SKIN")
 
-        host = gl.get_contract_at(self.host)
+        host = gl.contract.get_at(self.host)
         host.emit(on="accepted").apply_mutation(
             decision["patch_id"],
             decision["threat_family"],
@@ -239,8 +241,8 @@ class Helix(gl.Contract):
 
         if decision["patch_id"] == "GROW_ORGAN":
             try:
-                salt = self.mutation_count if int(self.mutation_count) > 0 else u256(1)
-                organ = gl.deploy_contract(
+                salt = self.mutation_count if int(self.mutation_count) > 0 else 1
+                organ = gl.contract.deploy(
                     code=self.watchdog_code.encode("utf-8"),
                     args=[self.host.as_hex, decision["threat_family"]],
                     salt_nonce=salt,
@@ -253,9 +255,9 @@ class Helix(gl.Contract):
     @gl.public.write
     def set_fallback_organ(self, organ: str) -> None:
         if gl.message.sender_address != self.owner:
-            raise Exception("not owner")
+            raise gl.vm.UserError("not owner")
         self.last_organ = Address(organ)
-        host = gl.get_contract_at(self.host)
+        host = gl.contract.get_at(self.host)
         host.emit(on="accepted").register_organ(organ)
 
     @gl.public.view

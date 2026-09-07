@@ -1,20 +1,10 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
-from genlayer import *
-
-# Empty contract-interface shim, the documented pattern for sending a plain
-# native-value transfer to an EOA (see docs "Faucet" example). Do not call
-# .emit_transfer() on a gl.get_contract_at() proxy instead of this - that
-# path is for cross-contract method calls (.emit(on=...).method(...)), not
-# plain value transfers.
-@gl.evm.contract_interface
-class _EOA:
-    class View:
-        pass
-    class Write:
-        pass
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
+from genlayer.types import *
 
 
-class HostVault(gl.Contract):
+class HostVault(gl.contract.Contract):
     owner: Address
     governor: Address
     frozen: bool
@@ -25,35 +15,35 @@ class HostVault(gl.Contract):
     last_threat_family: str
     last_patch_id: str
     organ_count: u256
-    organs: TreeMap[str, Address]
-    allowances: TreeMap[Address, u256]
+    organs: gl.storage.TreeMap[str, Address]
+    allowances: gl.storage.TreeMap[Address, u256]
 
     def __init__(self, constitution: str):
         self.owner = gl.message.sender_address
         self.governor = gl.message.sender_address
         self.frozen = False
-        self.genome_version = u256(1)
-        self.max_approval = u256(10**30)
+        self.genome_version = 1
+        self.max_approval = 10**30
         self.constitution = constitution
         self.last_mutation = "genesis"
         self.last_threat_family = ""
         self.last_patch_id = "NONE"
-        self.organ_count = u256(0)
+        self.organ_count = 0
         root = gl.storage.Root.get()
         root.upgraders.get().append(gl.message.sender_address)
 
     def _only_governor(self) -> None:
         if gl.message.sender_address != self.governor:
-            raise Exception("not governor")
+            raise gl.vm.UserError("not governor")
 
     def _not_frozen(self) -> None:
         if self.frozen:
-            raise Exception("FROZEN_BY_HELIX")
+            raise gl.vm.UserError("FROZEN_BY_HELIX")
 
     @gl.public.write
     def set_governor(self, governor: str) -> None:
         if gl.message.sender_address != self.owner and gl.message.sender_address != self.governor:
-            raise Exception("not authorized")
+            raise gl.vm.UserError("not authorized")
         self.governor = Address(governor)
         root = gl.storage.Root.get()
         root.upgraders.get().append(Address(governor))
@@ -65,17 +55,16 @@ class HostVault(gl.Contract):
     @gl.public.write
     def approve(self, spender: str, amount: int) -> None:
         self._not_frozen()
-        amt = u256(amount)
-        if amt > self.max_approval:
-            raise Exception("above max_approval")
-        self.allowances[Address(spender)] = amt
+        if amount > self.max_approval:
+            raise gl.vm.UserError("above max_approval")
+        self.allowances[Address(spender)] = amount
 
     @gl.public.write
     def withdraw(self, to: str, amount: int) -> None:
         self._not_frozen()
         if gl.message.sender_address != self.owner:
-            raise Exception("not owner")
-        _EOA(Address(to)).emit_transfer(value=u256(amount))
+            raise gl.vm.UserError("not owner")
+        gl.contract.get_at(Address(to)).emit_transfer(value=amount)
 
     @gl.public.write
     def apply_mutation(
@@ -97,11 +86,11 @@ class HostVault(gl.Contract):
             self.constitution = new_constitution
         if freeze:
             self.frozen = True
-            self.max_approval = u256(0)
+            self.max_approval = 0
         if new_max_approval >= 0:
-            self.max_approval = u256(new_max_approval)
+            self.max_approval = new_max_approval
         if bump_version:
-            self.genome_version = self.genome_version + u256(1)
+            self.genome_version = self.genome_version + 1
         if new_code:
             root = gl.storage.Root.get()
             code = root.code.get()
@@ -113,7 +102,7 @@ class HostVault(gl.Contract):
         self._only_governor()
         key = str(int(self.organ_count))
         self.organs[key] = Address(organ)
-        self.organ_count = self.organ_count + u256(1)
+        self.organ_count = self.organ_count + 1
 
     @gl.public.write
     def upgrade(self, new_code: bytes) -> None:
@@ -137,7 +126,7 @@ class HostVault(gl.Contract):
 
     @gl.public.view
     def get_allowance(self, spender: str) -> u256:
-        return self.allowances.get(Address(spender), u256(0))
+        return self.allowances.get(Address(spender), 0)
 
     @gl.public.view
     def get_organ(self, index: str) -> Address:

@@ -1,7 +1,10 @@
-# { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
-from genlayer import *
+# v0.3.0
+# { "Depends": "py-genlayer:5jycge4q8k23462jtb0b9fyey1s9qz928sz2nbrd9mg4sxqg2qng" }
+import genlayer as gl
+from genlayer.types import *
 
-class HostVault(gl.Contract):
+
+class HostVault(gl.contract.Contract):
     owner: Address
     governor: Address
     frozen: bool
@@ -12,19 +15,19 @@ class HostVault(gl.Contract):
     last_threat_family: str
     last_patch_id: str
     organ_count: u256
-    organs: TreeMap[str, Address]
-    allowances: TreeMap[Address, u256]
+    organs: gl.storage.TreeMap[str, Address]
+    allowances: gl.storage.TreeMap[Address, u256]
 
     def __init__(self):
         pass
 
     @gl.public.write
     def approve(self, spender: str, amount: int) -> None:
-        raise Exception("FROZEN_BY_HELIX")
+        raise gl.vm.UserError("FROZEN_BY_HELIX")
 
     @gl.public.write
     def withdraw(self, to: str, amount: int) -> None:
-        raise Exception("FROZEN_BY_HELIX")
+        raise gl.vm.UserError("FROZEN_BY_HELIX")
 
     @gl.public.write
     def apply_mutation(
@@ -39,7 +42,7 @@ class HostVault(gl.Contract):
         bump_version: bool,
     ) -> None:
         if gl.message.sender_address != self.governor:
-            raise Exception("not governor")
+            raise gl.vm.UserError("not governor")
         self.last_patch_id = patch_id
         self.last_threat_family = threat_family
         self.last_mutation = rationale
@@ -47,17 +50,17 @@ class HostVault(gl.Contract):
             self.constitution = new_constitution
         if freeze:
             self.frozen = True
-            self.max_approval = u256(0)
+            self.max_approval = 0
         if bump_version:
-            self.genome_version = self.genome_version + u256(1)
+            self.genome_version = self.genome_version + 1
 
     @gl.public.write
     def register_organ(self, organ: str) -> None:
         if gl.message.sender_address != self.governor:
-            raise Exception("not governor")
+            raise gl.vm.UserError("not governor")
         key = str(int(self.organ_count))
         self.organs[key] = Address(organ)
-        self.organ_count = self.organ_count + u256(1)
+        self.organ_count = self.organ_count + 1
 
     @gl.public.write
     def upgrade(self, new_code: bytes) -> None:

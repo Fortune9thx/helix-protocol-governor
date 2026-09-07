@@ -3,6 +3,11 @@
  *
  * HostVault.get_state()  -> "version||frozen||max_approval||constitution||patch||family||mutation||organ_count"
  * Helix.get_status()     -> "count||family||patch||rationale||urls||organ"
+ *
+ * studio-dev (consensus v0.6 RC) is fee-funded: every deploy/write must
+ * carry an SDK fee estimate, and success is only proven once a transaction
+ * is FINALIZED with FINISHED_WITH_RETURN - see
+ * https://docs.genlayer.com/developers/consensus-v06-migration
  */
 
 import { HELIX_ADDRESS, HOST_VAULT_ADDRESS, readClient, writeClient } from "./genlayer";
@@ -73,35 +78,40 @@ export async function readHelixStatus(): Promise<HelixStatus> {
   return parseHelixStatus(raw);
 }
 
-/** HostVault.approve(spender, amount). Reverts FROZEN_BY_HELIX once spliced. */
-export async function approve(account: string, spender: string, amountWei: bigint): Promise<string> {
+async function writeWithFees(
+  account: string,
+  address: string,
+  functionName: string,
+  kwargs: object,
+): Promise<string> {
   const client = await writeClient(account);
+  const estimate = await client.estimateTransactionFees();
+  const fees = { distribution: estimate.distribution, feeValue: estimate.feeValue };
   const hash = await client.writeContract({
-    address: HOST_VAULT_ADDRESS as `0x${string}`,
-    functionName: "approve",
+    address: address as `0x${string}`,
+    functionName,
     args: [],
-    kwargs: { spender, amount: amountWei },
+    kwargs,
     value: 0n,
+    fees,
   } as never);
   return hash as unknown as string;
+}
+
+/** HostVault.approve(spender, amount). Reverts FROZEN_BY_HELIX once spliced. */
+export async function approve(account: string, spender: string, amountWei: bigint): Promise<string> {
+  return writeWithFees(account, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
 }
 
 /** Helix.ingest_threat(url_a, url_b) — runs the leader/validator consensus round. */
 export async function ingestThreat(account: string, urlA: string, urlB: string): Promise<string> {
-  const client = await writeClient(account);
-  const hash = await client.writeContract({
-    address: HELIX_ADDRESS as `0x${string}`,
-    functionName: "ingest_threat",
-    args: [],
-    kwargs: { url_a: urlA, url_b: urlB },
-    value: 0n,
-  } as never);
-  return hash as unknown as string;
+  return writeWithFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
 }
 
+/** Waits for FINALIZED. Callers should also check the receipt/a fresh read for FINISHED_WITH_RETURN. */
 export async function waitForTx(hash: string): Promise<void> {
   const client = await readClient();
-  await client.waitForTransactionReceipt({ hash, retries: 200 } as never);
+  await client.waitForFinalization({ hash, retries: 200, interval: 3000 } as never);
 }
 
 /**
@@ -117,6 +127,7 @@ export function readableError(err: unknown): string {
         String(err));
   if (raw.includes("FROZEN_BY_HELIX")) return "FROZEN_BY_HELIX";
   if (raw.includes("above max_approval")) return "above max_approval";
+  if (raw.includes("evidence url")) return raw.match(/evidence url[^"\\]*/)?.[0] ?? raw;
   if (/user rejected|denied|4001/i.test(raw)) return "Signature rejected.";
   return raw.length > 120 ? `${raw.slice(0, 117)}…` : raw;
 }
