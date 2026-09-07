@@ -43,7 +43,7 @@ function Theater() {
       const hash = await approve(address, address, APPROVE_AMOUNT_WEI);
       setNote("Approval submitted. Waiting for consensus…");
       await waitForTx(hash);
-      setNote("Approval accepted.");
+      setNote("Approval finalized.");
       await refresh();
     } catch (err) {
       setNote(readableError(err));

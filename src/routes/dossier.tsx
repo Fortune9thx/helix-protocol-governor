@@ -43,7 +43,7 @@ function Dossier() {
       const hash = await ingestThreat(address, threat.trim(), evidence.trim());
       setPending("leader      : fetching evidence, running the jury");
       await waitForTx(hash);
-      setPending("equivalence : validators agreed");
+      setPending("finalized    : validators agreed");
       await refresh();
       setPending(null);
     } catch (err) {
