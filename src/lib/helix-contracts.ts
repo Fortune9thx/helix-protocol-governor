@@ -108,10 +108,20 @@ export async function ingestThreat(account: string, urlA: string, urlB: string):
   return writeWithFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
 }
 
-/** Waits for FINALIZED. Callers should also check the receipt/a fresh read for FINISHED_WITH_RETURN. */
+/**
+ * Waits for FINALIZED. Callers should also check the receipt/a fresh read for
+ * FINISHED_WITH_RETURN.
+ *
+ * studio-dev enforces a hard per-account RPC rate limit (500 req/hour,
+ * confirmed empirically) and a tight poll interval burns through it fast -
+ * a single finalization wait can otherwise cost dozens of requests on its
+ * own, on top of whatever else is polling get_state/get_status in the
+ * background. 10s keeps one write's wait under ~30 requests even in the
+ * worst case (5 minutes to finalize).
+ */
 export async function waitForTx(hash: string): Promise<void> {
   const client = await readClient();
-  await client.waitForFinalization({ hash, retries: 200, interval: 3000 } as never);
+  await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never);
 }
 
 /**

@@ -94,7 +94,7 @@ async function main() {
     console.log(`\ndeploying ${label}...`);
     const hash = await client.deployContract({ code: bytes(path), args, fees } as never);
     console.log(`  tx ${hash} - waiting for finalization...`);
-    const receipt = await client.waitForFinalization({ hash, retries: 200, interval: 3000 } as never) as Receipt;
+    const receipt = await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never) as Receipt;
     assertSuccessful(`${label} deploy`, receipt);
     const address = receipt.to_address ?? receipt.txDataDecoded?.contractAddress;
     if (!address) throw new Error(`${label}: no contract address in finalized receipt`);
@@ -106,7 +106,7 @@ async function main() {
     console.log(`\n${label}...`);
     const hash = await client.writeContract({ address, functionName, args: [], kwargs, value: 0n, fees } as never);
     console.log(`  tx ${hash} - waiting for finalization...`);
-    const receipt = await client.waitForFinalization({ hash, retries: 200, interval: 3000 } as never) as Receipt;
+    const receipt = await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never) as Receipt;
     assertSuccessful(label, receipt);
     console.log(`  ${label} ok (FINALIZED, FINISHED_WITH_RETURN)`);
   };

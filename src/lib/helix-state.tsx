@@ -33,7 +33,12 @@ const HelixContext = createContext<HelixState>({
   refresh: async () => {},
 });
 
-const POLL_MS = 4000;
+// studio-dev enforces a hard per-account RPC rate limit (500 req/hour,
+// confirmed empirically). Each tick costs 2 reads (get_state + get_status);
+// at the old 4s interval a single viewer left open for ~17 minutes could
+// exhaust the entire hourly budget on its own. 20s keeps one viewer under
+// 360 req/hour, leaving headroom for a few concurrent viewers plus writes.
+const POLL_MS = 20000;
 
 export function HelixProvider({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState(false);
