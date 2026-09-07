@@ -7,9 +7,19 @@ on:
     branches: [main]
 
 jobs:
+  # KNOWN GAP: contracts are pinned to the consensus v0.6 RC py-genlayer
+  # runner (see contracts/*.py headers and CLAUDE.md). The genvm-lint /
+  # genlayer-test versions in requirements.txt predate that runner and hang
+  # trying to auto-download an SDK build for it (there is no matching
+  # GitHub release yet - the v0.6 runner ships through genlayer-studio's
+  # RC tags instead). Both jobs are timeout-bounded so they fail fast
+  # instead of hanging; update requirements.txt to the RC-compatible
+  # genvm-linter/genlayer-test versions once published, then remove this
+  # note.
   lint-contracts:
     name: Lint Contracts
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -25,6 +35,7 @@ jobs:
   test-direct:
     name: Direct Mode Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
