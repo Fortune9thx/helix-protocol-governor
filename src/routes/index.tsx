@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import portrait from "@/assets/helix-portrait.jpg";
-import { useHelix } from "@/lib/helix-state";
+import { useState } from "react";
+import portrait from "../assets/helix-portrait.jpg";
+import { useHelix } from "../lib/helix-state";
+import { useWallet } from "../lib/wallet";
+import { approve, readableError, waitForTx } from "../lib/helix-contracts";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,8 +24,37 @@ export const Route = createFileRoute("/")({
   component: Theater,
 });
 
+const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
+
 function Theater() {
-  const { spliced } = useHelix();
+  const { spliced, host, refresh } = useHelix();
+  const { address, connect } = useWallet();
+  const [pending, setPending] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  async function onApprove() {
+    if (!address) {
+      await connect();
+      return;
+    }
+    setPending(true);
+    setNote("Signing approval…");
+    try {
+      const hash = await approve(address, address, APPROVE_AMOUNT_WEI);
+      setNote("Approval submitted. Waiting for consensus…");
+      await waitForTx(hash);
+      setNote("Approval accepted.");
+      await refresh();
+    } catch (err) {
+      setNote(readableError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  // Real genome version once the chain is readable, else the design's own default.
+  const version = host ? `V${host.genomeVersion}` : spliced ? "V2" : "V1";
+  const line = note ?? host?.constitution ?? "Unlimited approvals allowed.";
 
   return (
     <div className="grid h-screen w-full grid-cols-1 overflow-hidden md:grid-cols-2">
@@ -37,13 +69,14 @@ function Theater() {
         <div className="mt-8">
           <button
             type="button"
-            disabled={spliced}
+            onClick={() => void onApprove()}
+            disabled={spliced || pending}
             className="inline-flex min-w-[12rem] items-center justify-center whitespace-nowrap rounded-full bg-ink px-8 py-4 text-base tracking-tight text-cream transition-opacity hover:opacity-85 disabled:opacity-40"
           >
             {spliced ? "Frozen by Helix" : "Approve 100 ETH"}
           </button>
           <p className="mt-4 font-mono text-xs tracking-wide text-ink/55 uppercase">
-            HostVault {spliced ? "V2" : "V1"} · Unlimited approvals allowed.
+            HostVault {version} · {line}
           </p>
         </div>
       </section>

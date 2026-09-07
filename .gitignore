@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+# bun.lock is the project's real lockfile; package-lock.json is a local
+# npm-install artifact (bun wasn't available in the environment this repo
+# was last wired up in) and shouldn't fight bun.lock for authority.
+package-lock.json
 dist
 dist-ssr
 .output
@@ -15,6 +19,13 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env
+
+# Python / GenLayer contract tooling
+__pycache__/
+*.pyc
+.pytest_cache/
+/artifacts
 
 # Wrangler / Cloudflare
 .wrangler/

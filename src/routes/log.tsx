@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import f1 from "@/assets/frame-01.jpg";
-import f2 from "@/assets/frame-02.jpg";
-import f3 from "@/assets/frame-03.jpg";
-import f4 from "@/assets/frame-04.jpg";
+import f1 from "../assets/frame-01.jpg";
+import f2 from "../assets/frame-02.jpg";
+import f3 from "../assets/frame-03.jpg";
+import f4 from "../assets/frame-04.jpg";
 
 export const Route = createFileRoute("/log")({
   head: () => ({

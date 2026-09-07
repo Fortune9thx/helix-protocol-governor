@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PillNav } from "../components/PillNav";
 import { HelixProvider, useHelix } from "../lib/helix-state";
+import { WalletProvider } from "../lib/wallet";
 
 function NotFoundComponent() {
   return (
@@ -148,12 +149,14 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HelixProvider>
-        <PillNav />
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-        <SpliceControl />
-      </HelixProvider>
+      <WalletProvider>
+        <HelixProvider>
+          <PillNav />
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+          <SpliceControl />
+        </HelixProvider>
+      </WalletProvider>
     </QueryClientProvider>
   );
 }

@@ -66,6 +66,55 @@ This project was built with [Lovable](https://lovable.dev).
 
 **Live app**: https://helix-protocol-governor.lovable.app
 
+## The GenLayer protocol
+
+The UI above is wired to a real GenLayer Intelligent Contract stack, not a mock:
+
+```
+contracts/
+  genome_registry.py  # patch storage: title + constitution text + (for SHED_SKIN) replacement source
+  host_vault.py         # v1: unlimited approvals allowed. The "patient".
+  host_vault_v2.py        # SHED_SKIN's spliced code: approve/withdraw always revert
+  watchdog.py               # minimal child spawned on GROW_ORGAN
+  helix.py                    # the governor: ingest_threat() runs the consensus round
+evidence/                   # the two evidence pages the jury fetches for the demo
+scripts/deploy.ts           # deploys + wires all four contracts, prints addresses for .env
+src/lib/genlayer.ts          # chain config, MetaMask connect/switch-network
+src/lib/helix-contracts.ts    # get_state()/get_status() reads, approve()/ingest_threat() writes
+src/lib/wallet.tsx              # wallet context (address, connect())
+src/lib/helix-state.tsx           # polls live chain state every 4s; `spliced` = preview toggle OR host.frozen
+```
+
+`Helix.ingest_threat` reads two evidence URLs via `gl.nondet.web.render`/`gl.nondet.exec_prompt`
+inside the contract, reaches validator consensus on `should_act` + `threat_family` +
+`patch_id` only (never on free text), then cross-contract-calls `HostVault.apply_mutation`.
+`infinite_approve_drain → SHED_SKIN` (freeze + splice HostVault's own running code to v2).
+`permit_phishing_kit → GROW_ORGAN` (spawn a `Watchdog` child). A frozen `HostVault.approve`
+reverts `FROZEN_BY_HELIX`.
+
+### Run the contracts
+
+```bash
+pip install -r requirements.txt
+genvm-lint check contracts/helix.py   # repeat per contract
+pytest tests/direct/ -v                # 12 tests: family->patch mapping + HostVault mutation mechanics
+```
+
+### Deploy and wire the app to it
+
+```bash
+cp .env.example .env
+# fill in DEPLOYER_PRIVATE_KEY and (once this repo is pushed) the two evidence URLs
+npm run deploy:helix                    # prints VITE_HOST_VAULT_ADDRESS / VITE_HELIX_ADDRESS / VITE_GENOME_REGISTRY_ADDRESS
+# paste those three lines into .env, then:
+npm run dev
+```
+
+Until `.env` has real addresses, the app still renders honestly: it never fabricates
+on-chain data, it just falls back to the design's own static copy (`HostVault V1 ·
+Unlimited approvals allowed.`) until a live read succeeds. Connect/Approve/Ingest all
+prompt for a wallet and fail with a real error message rather than crash.
+
 ## Build with Lovable
 
 Continue developing this project in the [Lovable editor](https://lovable.dev/projects/5031726a-b274-40aa-9c80-d7c020970fe5).

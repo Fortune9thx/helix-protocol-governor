@@ -1,0 +1,6 @@
+<!doctype html><meta charset="utf-8">
+<title>Security Advisory GHSA-helix-approve-drain</title>
+<h1>Unlimited approval drain in HostVault-class spenders</h1>
+<p>Active exploitation observed. Attackers call approve(attacker, type(uint256).max) then transferFrom the vault.</p>
+<p>Threat family: infinite_approve_drain</p>
+<p>Recommended mutation: revoke allowances, freeze withdraw, splice genome to reject approve.</p>

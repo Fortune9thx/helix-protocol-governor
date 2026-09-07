@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import barcode from "@/assets/helix-barcode.jpg";
+import barcode from "../assets/helix-barcode.jpg";
+import { EVIDENCE_DRAIN_URL, EVIDENCE_PHISH_URL } from "../lib/genlayer";
+import { useHelix } from "../lib/helix-state";
+import { useWallet } from "../lib/wallet";
+import { ingestThreat, readableError, waitForTx } from "../lib/helix-contracts";
 
 export const Route = createFileRoute("/dossier")({
   head: () => ({
@@ -21,9 +25,47 @@ export const Route = createFileRoute("/dossier")({
 });
 
 function Dossier() {
-  const [threat, setThreat] = useState("https://");
-  const [evidence, setEvidence] = useState("https://");
-  const [dump, setDump] = useState<string | null>(null);
+  const [threat, setThreat] = useState(EVIDENCE_DRAIN_URL || "https://");
+  const [evidence, setEvidence] = useState(EVIDENCE_PHISH_URL || "https://");
+  const [pending, setPending] = useState<string | null>(null);
+  const [failure, setFailure] = useState<string | null>(null);
+  const { status, refresh } = useHelix();
+  const { address, connect } = useWallet();
+
+  async function onIngest() {
+    if (!address) {
+      await connect();
+      return;
+    }
+    setFailure(null);
+    setPending("submitted   : awaiting signature");
+    try {
+      const hash = await ingestThreat(address, threat.trim(), evidence.trim());
+      setPending("leader      : fetching evidence, running the jury");
+      await waitForTx(hash);
+      setPending("equivalence : validators agreed");
+      await refresh();
+      setPending(null);
+    } catch (err) {
+      setFailure(readableError(err));
+      setPending(null);
+    }
+  }
+
+  // The verdict is read back off-chain state, never composed in the browser.
+  const dump = pending
+    ? pending
+    : failure
+      ? `error        : ${failure}`
+      : status && status.mutationCount !== "0"
+        ? [
+            `should_act   : ${status.lastPatch !== "NONE"}`,
+            `family       : ${status.lastFamily || "—"}`,
+            `patch        : ${status.lastPatch}`,
+            `rationale    : ${status.lastRationale || "—"}`,
+            `sources      : ${status.lastUrls || "—"}`,
+          ].join("\n")
+        : null;
 
   return (
     <main className="min-h-screen bg-cream px-8 pt-32 pb-36 md:px-14">
@@ -67,17 +109,8 @@ function Dossier() {
 
       <button
         type="button"
-        onClick={() =>
-          setDump(
-            [
-              "should_act   : true",
-              "family       : approval-drain / unlimited-allowance",
-              `patch        : freeze(HostVault.V1) -> splice(V2)`,
-              `threat_src   : ${threat || "—"}`,
-              `evidence_src : ${evidence || "—"}`,
-            ].join("\n"),
-          )
-        }
+        onClick={() => void onIngest()}
+        disabled={pending !== null}
         className="mt-10 rounded-full bg-ink px-8 py-4 text-base tracking-tight text-cream transition-opacity hover:opacity-85"
       >
         Ingest threat
