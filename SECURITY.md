@@ -49,4 +49,26 @@ consensus-reached decision) can ever trigger the splice.
   `HostVault.get_state()` rather than assuming the mutation applied the instant
   `ingest_threat` is accepted.
 
+## Operational risk: studio-dev's RPC rate limit
+
+GenLayer Studio Devnet enforces a hard rate limit on `eth_sendRawTransaction`
+(confirmed empirically during this project's own deploy/verification work:
+`Rate limit exceeded: 500 requests per hour`). It does not appear to be a simple
+sliding window — it stayed in effect well past the point a rolling-window model
+would predict recovery. `waitForFinalization`'s own polling loop is the likely
+dominant cost (each in-flight write can cost dozens of polls on its own, on top of
+whatever else is reading live state in the background), so both the deploy script
+and the frontend now poll conservatively (10s for finalization waits, 20s for the
+Theater/Dossier's live state poll — see `src/lib/helix-contracts.ts` and
+`src/lib/helix-state.tsx`). If this project is judged live rather than from a
+recording, avoid stacking multiple write flows (deploy + demo + a judge's own
+`Approve`/`Ingest threat` clicks) in a short window against the same account.
+
+## Studio-dev is a release candidate, not a stable network
+
+Per GenLayer's own migration docs: "Studio-dev is a release-candidate environment
+and may reset." If it resets, the three addresses in `README.md`/`SUBMISSION.md`
+go dead with no code change required to fix — just `npm run deploy:helix` again
+and update `.env` / the Vercel project's env vars.
+
 Report issues by opening a GitHub issue on this repo.
