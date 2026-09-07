@@ -1,7 +1,7 @@
 # DEMO
 
 A continuous take across the Theater, Dossier, and Log views. Wallet connected to
-testnet Bradbury.
+GenLayer Studio Devnet (chain 61997).
 
 **0:00 — Theater.** `HELIX`, giant, sand-on-cream. "Autonomous protocol. Genome
 governor." Right half: the dithered patient portrait, `PATIENT LIVE`, 4 of 5 dots lit.

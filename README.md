@@ -64,7 +64,9 @@ Forbidden: Get Started, Pricing, Capabilities essays, Inter as display if you ca
 
 This project was built with [Lovable](https://lovable.dev).
 
-**Live app**: https://helix-protocol-governor.lovable.app
+**Live app**: https://helix-protocol-governor.vercel.app (deployed via Vercel, not
+Lovable's own hosting — the `lovable.app` domain reflects the same code but not the
+production contract addresses, so it will not show live chain data)
 
 See [SUBMISSION.md](SUBMISSION.md) for the pitch, [DEMO.md](DEMO.md) for the demo
 script, and [SECURITY.md](SECURITY.md) for the trust model.
@@ -97,7 +99,10 @@ contracts/
   watchdog.py               # minimal child spawned on GROW_ORGAN
   helix.py                    # the governor: ingest_threat() runs the consensus round
 evidence/                   # the two evidence pages the jury fetches for the demo
-scripts/deploy.ts           # deploys + wires all four contracts, prints addresses for .env
+scripts/deploy.ts           # deploys GenomeRegistry, HostVault, Helix + registers all
+                              # patches (host_vault_v2.py's source ships as the
+                              # SHED_SKIN patch, not a separately deployed contract),
+                              # prints addresses for .env
 src/lib/genlayer.ts          # chain config, MetaMask connect/switch-network
 src/lib/helix-contracts.ts    # get_state()/get_status() reads, approve()/ingest_threat() writes
 src/lib/wallet.tsx              # wallet context (address, connect())
@@ -135,6 +140,18 @@ Until `.env` has real addresses, the app still renders honestly: it never fabric
 on-chain data, it just falls back to the design's own static copy (`HostVault V1 ·
 Unlimited approvals allowed.`) until a live read succeeds. Connect/Approve/Ingest all
 prompt for a wallet and fail with a real error message rather than crash.
+
+### Live deployment (GenLayer Studio Devnet, chain 61997)
+
+| Contract | Address |
+|---|---|
+| GenomeRegistry | `0x8917000947c06B57CDbc10d79f544445c096913d` |
+| HostVault | `0xba958e66e8a488C557A291c84980681e90A87EF3` |
+| Helix | `0xbd30c4E40Ec1F0255953c69152c5096F42089a55` |
+
+Explorer: https://explorer-studio-dev.genlayer.com/. Studio Devnet is a
+release-candidate environment and may reset — if these addresses stop resolving,
+re-run `npm run deploy:helix` and update `.env` / the Vercel project's env vars.
 
 ## Build with Lovable
 

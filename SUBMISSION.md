@@ -7,8 +7,16 @@
 **Line:** The first Intelligent Contract that governs another contract's code. No
 Safe. No council. The web is the signal. Consensus is the surgeon.
 
-**Live app:** https://helix-protocol-governor.lovable.app
+**Live app:** https://helix-protocol-governor.vercel.app
 **Repo:** https://github.com/Fortune9thx/helix-protocol-governor
+**Network:** GenLayer Studio Devnet (consensus v0.6 RC, chain 61997) — explorer at
+https://explorer-studio-dev.genlayer.com/
+
+| Contract | Address |
+|---|---|
+| GenomeRegistry | `0x8917000947c06B57CDbc10d79f544445c096913d` |
+| HostVault | `0xba958e66e8a488C557A291c84980681e90A87EF3` |
+| Helix | `0xbd30c4E40Ec1F0255953c69152c5096F42089a55` |
 
 ## What it is
 
@@ -19,7 +27,7 @@ no human, no multisig, no admin council anywhere in the loop.
 
 `Helix.ingest_threat(url_a, url_b)` fetches page text (and, when available, a
 screenshot) of two evidence URLs directly inside the contract via `gl.nondet.web.render`
-and `gl.nondet.exec_prompt`, then runs `gl.vm.run_nondet_unsafe(leader_fn, validator_fn)`
+and `gl.nondet.exec_prompt`, then runs `gl.vm.run_nondet(leader_fn, validator_fn)`
 — `validator_fn` doesn't check the leader's output shape, it independently re-fetches
 the same evidence and re-derives the answer from scratch, per GenLayer's own
 recommended "custom validator" pattern for consequential decisions. Equivalence is
@@ -34,7 +42,7 @@ and HELIX cross-contract-calls `HostVault.apply_mutation`:
   native `root.code` upgrade mechanism, live, from inside the write path that decided
   it was necessary.
 - `permit_phishing_kit → GROW_ORGAN` — deploys a fresh `Watchdog` child contract with
-  `gl.deploy_contract` and registers it on the host.
+  `gl.contract.deploy` and registers it on the host.
 - `active_exploit_unknown → HALT` — freezes without a code splice.
 - `noise → NONE` — no mutation.
 
