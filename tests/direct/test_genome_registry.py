@@ -3,7 +3,7 @@
 
 def test_register_and_read_patch(direct_vm, direct_deploy, direct_owner):
     direct_vm.sender = direct_owner
-    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.6.0-rc3")
+    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.3.0-rc7")
 
     registry.register_patch(
         "SHED_SKIN",
@@ -23,7 +23,7 @@ def test_register_and_read_patch(direct_vm, direct_deploy, direct_owner):
 
 def test_unknown_patch_returns_empty(direct_vm, direct_deploy, direct_owner):
     direct_vm.sender = direct_owner
-    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.6.0-rc3")
+    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.3.0-rc7")
 
     assert registry.get_constitution("DOES_NOT_EXIST") == ""
     assert registry.get_patch_code("DOES_NOT_EXIST") == ""
@@ -31,7 +31,7 @@ def test_unknown_patch_returns_empty(direct_vm, direct_deploy, direct_owner):
 
 def test_register_patch_requires_owner(direct_vm, direct_deploy, direct_owner, direct_bob):
     direct_vm.sender = direct_owner
-    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.6.0-rc3")
+    registry = direct_deploy("contracts/genome_registry.py", sdk_version="v0.3.0-rc7")
 
     direct_vm.sender = direct_bob
     with direct_vm.expect_revert("not owner"):
