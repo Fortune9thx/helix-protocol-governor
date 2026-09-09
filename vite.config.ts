@@ -4,7 +4,6 @@
 //     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { resolve } from "node:path";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 export default defineConfig({
@@ -14,15 +13,18 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    resolve: {
-      alias: {
-        // See src/lib/stubs/x402-evm-stub.ts - wagmi's default connectors
-        // transitively pull in an optional Coinbase x402 dependency that
-        // fails to resolve in production builds; this app never uses it.
-        // process.cwd() (not import.meta.url) because Vite may execute this
-        // config from a transformed temp copy, whose own URL isn't a
-        // reliable base for a relative path.
-        "@x402/evm": resolve(process.cwd(), "src/lib/stubs/x402-evm-stub.ts"),
+    build: {
+      rollupOptions: {
+        // wagmi's default connectors transitively pull in @coinbase/cdp-sdk's
+        // x402-payments feature (Base Account connector), which lazily
+        // dynamic-imports several @x402/* subpaths (@x402/evm,
+        // @x402/evm/upto/client, ...) this app never actually calls. An
+        // alias to a stub only covers one exact specifier; @x402/* has
+        // multiple subpath exports, so mark the whole scope external
+        // instead - rolldown then leaves the dynamic import as-is rather
+        // than trying to resolve/bundle a package tree that isn't fully
+        // installed. Harmless: the x402 code path is never reached.
+        external: [/^@x402\//],
       },
     },
   },
