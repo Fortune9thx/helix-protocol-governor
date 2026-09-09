@@ -28,14 +28,17 @@ export function PillNav() {
             </Link>
           ))}
         </div>
-        <button
-          type="button"
-          onClick={() => void connect()}
-          disabled={connecting || address !== null}
-          className="rounded-full bg-ink px-5 py-2 text-sm tracking-tight text-cream transition-opacity hover:opacity-85"
-        >
-          {address ? truncate(address) : connecting ? "Connecting" : "Connect"}
-        </button>
+        <div className="flex items-center gap-4">
+          <img src="/logo.svg" alt="HELIX" className="h-4 w-auto" />
+          <button
+            type="button"
+            onClick={() => void connect()}
+            disabled={connecting || address !== null}
+            className="rounded-full bg-ink px-5 py-2 text-sm tracking-tight text-cream transition-opacity hover:opacity-85"
+          >
+            {address ? truncate(address) : connecting ? "Connecting" : "Connect"}
+          </button>
+        </div>
       </nav>
     </div>
   );
