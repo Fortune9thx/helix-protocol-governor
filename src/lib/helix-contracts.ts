@@ -192,22 +192,43 @@ export async function waitForTx(hash: string): Promise<JuryTally | null> {
  * A frozen vault surfaces as FROZEN_BY_HELIX, which is the whole point.
  */
 export function readableError(err: unknown): string {
+  // The specific, actionable text (e.g. "Rate limit exceeded: 500 requests
+  // per hour") frequently lands in viem's nested `details`/`cause.message`
+  // rather than `message`/`shortMessage` - those two alone showed only
+  // "An unknown RPC error occurred." / "An internal error was received."
+  // (MetaMask's own even-more-generic wrapping) for a confirmed-live
+  // rate-limit failure, which is indistinguishable from any other failure
+  // to a user. Checking every field a real error could carry the detail in
+  // means one specific case can't hide behind whichever field happened to
+  // be generic this time.
+  const e = err as {
+    shortMessage?: string;
+    message?: string;
+    details?: string;
+    cause?: { message?: string; details?: string };
+  };
   const raw =
     typeof err === "string"
       ? err
-      : ((err as { shortMessage?: string; message?: string })?.shortMessage ??
-        (err as { message?: string })?.message ??
-        String(err));
+      : [e?.shortMessage, e?.message, e?.details, e?.cause?.message, e?.cause?.details]
+          .filter(Boolean)
+          .join(" | ") || String(err);
   if (raw.includes("FROZEN_BY_HELIX")) return "FROZEN_BY_HELIX";
   if (raw.includes("above max_approval")) return "above max_approval";
   if (raw.includes("evidence url")) return raw.match(/evidence url[^"\\]*/)?.[0] ?? raw;
   if (/user rejected|denied|4001/i.test(raw)) return "Signature rejected.";
+  if (/rate limit exceeded/i.test(raw)) {
+    return "Studio Devnet is rate-limited right now (500 requests/hour, network-wide). Wait a few minutes and try again.";
+  }
   if (raw.includes("did not finalize successfully")) {
     if (/result=DISAGREE|status=UNDETERMINED/.test(raw)) {
       return "Validators disagreed - nothing was recorded. Try again.";
     }
     if (raw.includes("CANCELED")) return "Transaction expired before a validator picked it up. Try again.";
     return "Transaction finalized without succeeding.";
+  }
+  if (/unknown rpc error|internal error/i.test(raw)) {
+    return "The network rejected the request without a specific reason - often the studio-dev rate limit. Wait a few minutes and try again.";
   }
   return raw.length > 120 ? `${raw.slice(0, 117)}…` : raw;
 }
