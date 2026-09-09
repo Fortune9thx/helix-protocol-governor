@@ -140,6 +140,8 @@ export async function ingestThreat(account: string, urlA: string, urlB: string):
   return writeWithSimulatedFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
 }
 
+export type JuryTally = { agree: number; total: number };
+
 /**
  * Waits for FINALIZED and throws unless the transaction actually succeeded.
  * Reaching FINALIZED only means consensus reached a terminal state - it does
@@ -157,14 +159,20 @@ export async function ingestThreat(account: string, urlA: string, urlB: string):
  * own, on top of whatever else is polling get_state/get_status in the
  * background. 10s keeps one write's wait under ~30 requests even in the
  * worst case (5 minutes to finalize).
+ *
+ * Returns the real on-chain jury tally read off the finalized receipt's
+ * lastRound (how many of the round's validators actually voted AGREE), or
+ * null when the receipt carries no round data to count - the Theater's dot
+ * row uses this instead of a hardcoded number.
  */
-export async function waitForTx(hash: string): Promise<void> {
+export async function waitForTx(hash: string): Promise<JuryTally | null> {
   const client = await readClient();
   const receipt = await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never);
   const r = receipt as unknown as {
     status_name?: string;
     result_name?: string;
     lifecycle?: { state?: string; outcome?: string };
+    lastRound?: { validatorVotesName?: string[] };
   };
   const finalized = r.lifecycle?.state === "finalized";
   if (!finalized || !isSuccessful(receipt as never)) {
@@ -172,6 +180,10 @@ export async function waitForTx(hash: string): Promise<void> {
       `Transaction did not finalize successfully: status=${r.status_name} result=${r.result_name} lifecycle=${JSON.stringify(r.lifecycle)}`,
     );
   }
+  const votes = r.lastRound?.validatorVotesName;
+  if (!votes || votes.length === 0) return null;
+  const agree = votes.filter((v) => v === "AGREE" || v === "MAJORITY_AGREE").length;
+  return { agree, total: votes.length };
 }
 
 /**

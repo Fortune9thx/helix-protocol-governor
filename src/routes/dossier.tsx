@@ -29,7 +29,7 @@ function Dossier() {
   const [evidence, setEvidence] = useState(EVIDENCE_PHISH_URL || "https://");
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
-  const { status, refresh } = useHelix();
+  const { status, refresh, setIngesting, recordJury } = useHelix();
   const { address, connect } = useWallet();
 
   async function onIngest() {
@@ -39,16 +39,20 @@ function Dossier() {
     }
     setFailure(null);
     setPending("submitted   : awaiting signature");
+    setIngesting(true);
     try {
       const hash = await ingestThreat(address, threat.trim(), evidence.trim());
       setPending("leader      : fetching evidence, running the jury");
-      await waitForTx(hash);
+      const tally = await waitForTx(hash);
+      recordJury(tally);
       setPending("finalized    : validators agreed");
       await refresh();
       setPending(null);
     } catch (err) {
       setFailure(readableError(err));
       setPending(null);
+    } finally {
+      setIngesting(false);
     }
   }
 

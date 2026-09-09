@@ -162,3 +162,108 @@
     font-weight: 700;
   }
 }
+
+@layer utilities {
+  /* PATIENT LIVE: slow opacity pulse. */
+  @keyframes helix-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+  .helix-pulse {
+    animation: helix-pulse 1.4s ease-in-out infinite;
+  }
+
+  /* PATIENT DEAD: fires once when the label flips to it, never loops. */
+  @keyframes helix-glitch {
+    0% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    20% {
+      transform: translateX(-2px);
+      opacity: 0.85;
+    }
+    40% {
+      transform: translateX(2px);
+      opacity: 1;
+    }
+    60% {
+      transform: translateX(-1px);
+      opacity: 0.9;
+    }
+    80% {
+      transform: translateX(1px);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+  .helix-glitch-once {
+    animation: helix-glitch 0.3s linear 1;
+  }
+
+  /* Dither portrait: a faint scanline drifting down the frame. */
+  @keyframes helix-scan {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+  .helix-scanline {
+    animation: helix-scan 12s linear infinite;
+  }
+  .helix-scanline[data-paused="true"] {
+    animation-play-state: paused;
+  }
+
+  /* Jury dots after a real tally lands: light in left to right, then hold. */
+  @keyframes helix-dot-in {
+    from {
+      opacity: 0;
+      transform: scale(0.4);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .helix-dot-tick {
+    animation: helix-dot-in 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Jury dots while ingest_threat is in flight: sweep left to right. */
+  @keyframes helix-dot-scan {
+    0%,
+    100% {
+      opacity: 0.25;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  .helix-dot-scanning {
+    animation: helix-dot-scan 1s ease-in-out infinite;
+  }
+
+  /* Approve -> Frozen by Helix: plain crossfade, no bounce. */
+  @keyframes helix-label-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .helix-label-fade {
+    animation: helix-label-fade 0.2s ease-out both;
+  }
+}
