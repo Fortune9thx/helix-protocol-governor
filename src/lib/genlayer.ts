@@ -1,9 +1,11 @@
 /**
  * GenLayer wiring for HELIX.
  *
- * genlayer-js is imported dynamically everywhere so the SSR pass never pulls
- * the browser/wallet stack into the server bundle. Every export here is
- * client-only and returns early when `window` is absent.
+ * genlayer-js is imported dynamically for reads so the SSR pass never pulls
+ * the browser/wallet stack into the server bundle. Wallet connection and
+ * write-client construction live in wallet.tsx/wagmi-config.ts (RainbowKit +
+ * wagmi, matching every other GenLayer build here) - this file no longer
+ * touches window.ethereum directly.
  */
 
 const env = import.meta.env as Record<string, string | undefined>;
@@ -16,35 +18,6 @@ export const EVIDENCE_DRAIN_URL = env["VITE_EVIDENCE_DRAIN_URL"] ?? "";
 export const EVIDENCE_PHISH_URL = env["VITE_EVIDENCE_PHISH_URL"] ?? "";
 
 export const isConfigured = () => HOST_VAULT_ADDRESS !== "" && HELIX_ADDRESS !== "";
-
-type EthereumProvider = {
-  isMetaMask?: boolean;
-  request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
-  on?: (event: string, handler: (...args: unknown[]) => void) => void;
-  removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
-};
-
-/**
- * Returns the real MetaMask provider, not just whatever last overwrote
- * window.ethereum. A second wallet extension (Coinbase Wallet, Phantom,
- * Rabby...) commonly injects itself too and can shadow window.ethereum
- * entirely, or window.ethereum.providers holds several and MetaMask isn't
- * first. Multi-wallet setups where window.ethereum silently isn't MetaMask
- * are a real, common reason a "Connect" button does nothing.
- */
-export function getEthereum(): EthereumProvider | null {
-  if (typeof window === "undefined") return null;
-  const injected = (
-    window as unknown as {
-      ethereum?: EthereumProvider & { providers?: EthereumProvider[] };
-    }
-  ).ethereum;
-  if (!injected) return null;
-  if (injected.providers?.length) {
-    return injected.providers.find((p) => p.isMetaMask) ?? injected.providers[0] ?? injected;
-  }
-  return injected;
-}
 
 export async function getChain() {
   const chains = await import("genlayer-js/chains");
@@ -67,75 +40,6 @@ export async function readClient() {
   const { createClient } = await import("genlayer-js");
   const chain = await getChain();
   return createClient({ chain } as never);
-}
-
-/**
- * Write client: bound to the wallet's real injected provider, so MetaMask
- * actually raises a signature request.
- */
-export async function writeClient(account: string) {
-  const { createClient } = await import("genlayer-js");
-  const chain = await getChain();
-  const provider = getEthereum();
-  return createClient({ chain, account, provider } as never);
-}
-
-export async function chainIdHex(): Promise<string> {
-  const chain = await getChain();
-  return `0x${chain.id.toString(16)}`;
-}
-
-/** Connect MetaMask and make sure it is pointed at the configured GenLayer chain. */
-export async function connectWallet(): Promise<string> {
-  const eth = getEthereum();
-  if (!eth) throw new Error("No wallet found. Install MetaMask and reload the page.");
-
-  const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
-  const account = accounts[0];
-  if (!account) throw new Error("No account selected");
-
-  const chain = await getChain();
-  const wanted = await chainIdHex();
-  const current = (await eth.request({ method: "eth_chainId" })) as string;
-
-  if (current?.toLowerCase() !== wanted.toLowerCase()) {
-    try {
-      await eth.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: wanted }],
-      });
-    } catch (err) {
-      const code = (err as { code?: number }).code;
-      if (code === 4902) {
-        await eth.request({
-          method: "wallet_addEthereumChain",
-          params: [
-            {
-              chainId: wanted,
-              chainName: chain.name,
-              nativeCurrency: chain.nativeCurrency,
-              rpcUrls: [chain.rpcUrls?.default?.http?.[0]].filter(Boolean),
-            },
-          ],
-        });
-      } else {
-        throw err;
-      }
-    }
-  }
-
-  return account;
-}
-
-export async function currentAccount(): Promise<string | null> {
-  const eth = getEthereum();
-  if (!eth) return null;
-  try {
-    const accounts = (await eth.request({ method: "eth_accounts" })) as string[];
-    return accounts[0] ?? null;
-  } catch {
-    return null;
-  }
 }
 
 export function truncate(addr: string, head = 6, tail = 4): string {

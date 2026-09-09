@@ -10,8 +10,11 @@
  * https://docs.genlayer.com/developers/consensus-v06-migration
  */
 
-import { HELIX_ADDRESS, HOST_VAULT_ADDRESS, readClient, writeClient } from "./genlayer";
+import { HELIX_ADDRESS, HOST_VAULT_ADDRESS, readClient } from "./genlayer";
 import { isSuccessful } from "genlayer-js";
+import type { GenLayerClient, GenLayerChain } from "genlayer-js/types";
+
+type WriteClient = GenLayerClient<GenLayerChain>;
 
 export type HostState = {
   genomeVersion: string;
@@ -84,12 +87,11 @@ export async function readHelixStatus(): Promise<HelixStatus> {
  * fee estimate is enough.
  */
 async function writeWithFlatFees(
-  account: string,
+  client: WriteClient,
   address: string,
   functionName: string,
   kwargs: object,
 ): Promise<string> {
-  const client = await writeClient(account);
   const estimate = await client.estimateTransactionFees();
   const fees = { distribution: estimate.distribution, feeValue: estimate.feeValue };
   const hash = await client.writeContract({
@@ -113,12 +115,11 @@ async function writeWithFlatFees(
  * the leader's run actually triggers.
  */
 async function writeWithSimulatedFees(
-  account: string,
+  client: WriteClient,
   address: string,
   functionName: string,
   kwargs: object,
 ): Promise<string> {
-  const client = await writeClient(account);
   const callArgs = { address: address as `0x${string}`, functionName, args: [], kwargs, value: 0n };
   const estimate = await client.estimateTransactionFeesForWrite(callArgs as never);
   const fees = {
@@ -131,13 +132,13 @@ async function writeWithSimulatedFees(
 }
 
 /** HostVault.approve(spender, amount). Reverts FROZEN_BY_HELIX once spliced. */
-export async function approve(account: string, spender: string, amountWei: bigint): Promise<string> {
-  return writeWithFlatFees(account, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
+export async function approve(client: WriteClient, spender: string, amountWei: bigint): Promise<string> {
+  return writeWithFlatFees(client, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
 }
 
 /** Helix.ingest_threat(url_a, url_b) — runs the leader/validator consensus round. */
-export async function ingestThreat(account: string, urlA: string, urlB: string): Promise<string> {
-  return writeWithSimulatedFees(account, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
+export async function ingestThreat(client: WriteClient, urlA: string, urlB: string): Promise<string> {
+  return writeWithSimulatedFees(client, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
 }
 
 export type JuryTally = { agree: number; total: number };

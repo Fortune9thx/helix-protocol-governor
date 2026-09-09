@@ -8,12 +8,15 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { WagmiProvider } from "wagmi";
+import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import "@rainbow-me/rainbowkit/styles.css";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PillNav } from "../components/PillNav";
 import { HelixProvider, useHelix } from "../lib/helix-state";
-import { WalletProvider } from "../lib/wallet";
+import { wagmiConfig } from "../lib/wagmi-config";
 
 function NotFoundComponent() {
   return (
@@ -149,15 +152,17 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <WalletProvider>
-        <HelixProvider>
-          <PillNav />
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-          <SpliceControl />
-        </HelixProvider>
-      </WalletProvider>
-    </QueryClientProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <RainbowKitProvider>
+          <HelixProvider>
+            <PillNav />
+            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+            <Outlet />
+            <SpliceControl />
+          </HelixProvider>
+        </RainbowKitProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }

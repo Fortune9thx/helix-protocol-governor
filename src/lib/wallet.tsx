@@ -1,62 +1,71 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { connectWallet, currentAccount, getEthereum } from "./genlayer";
+import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { createClient } from "genlayer-js";
+import { wagmiConfig } from "./wagmi-config";
+import type { GenLayerClient, GenLayerChain } from "genlayer-js/types";
 
-type WalletState = {
-  address: string | null;
+/**
+ * The write client, bound to the wallet's real connected provider.
+ *
+ * Reading window.ethereum directly assumed the connected wallet is always
+ * the one injected provider a page happens to see - true only for a single
+ * browser-extension wallet. Any other connector (WalletConnect, Coinbase
+ * Smart Wallet, Safe, or even a second installed extension shadowing
+ * window.ethereum) leaves this null forever while the wallet is genuinely
+ * connected. connector.getProvider() returns whichever EIP-1193 provider
+ * wagmi actually established the connection through, matching every
+ * connector type instead of guessing at the global.
+ */
+export function useHelixWallet(): {
+  client: GenLayerClient<GenLayerChain> | null;
+  address: `0x${string}` | undefined;
   connecting: boolean;
-  error: string | null;
-  connect: () => Promise<void>;
-};
+  clientError: string | null;
+  openConnectModal: (() => void) | undefined;
+} {
+  const { address, isConnected, connector, status } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const [client, setClient] = useState<GenLayerClient<GenLayerChain> | null>(null);
+  const [clientError, setClientError] = useState<string | null>(null);
 
-const WalletContext = createContext<WalletState>({
-  address: null,
-  connecting: false,
-  error: null,
-  connect: async () => {},
-});
-
-export function WalletProvider({ children }: { children: ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [connecting, setConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Pick up an already-authorised account without prompting.
   useEffect(() => {
-    let alive = true;
-    void currentAccount().then((a) => {
-      if (alive) setAddress(a);
-    });
-
-    const eth = getEthereum();
-    const onAccounts = (...args: unknown[]) => {
-      const accounts = args[0] as string[] | undefined;
-      setAddress(accounts?.[0] ?? null);
-    };
-    eth?.on?.("accountsChanged", onAccounts);
-
-    return () => {
-      alive = false;
-      eth?.removeListener?.("accountsChanged", onAccounts);
-    };
-  }, []);
-
-  const connect = useCallback(async () => {
-    setConnecting(true);
-    setError(null);
-    try {
-      setAddress(await connectWallet());
-    } catch (err) {
-      setError((err as { message?: string })?.message ?? String(err));
-    } finally {
-      setConnecting(false);
+    let cancelled = false;
+    if (!isConnected || !address || !connector) {
+      setClient(null);
+      return;
     }
-  }, []);
+    connector
+      .getProvider()
+      .then((provider) => {
+        if (cancelled) return;
+        setClientError(null);
+        setClient(
+          createClient({
+            chain: wagmiConfig.chains[0],
+            account: address,
+            // wagmi's connector.getProvider() is typed as Promise<unknown> -
+            // it's a real EIP-1193 provider at runtime for every connector
+            // type, exactly the shape genlayer-js's createClient expects.
+            provider: provider as never,
+          } as never),
+        );
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setClient(null);
+        setClientError((err as { message?: string })?.message ?? String(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected, address, connector]);
 
-  return (
-    <WalletContext.Provider value={{ address, connecting, error, connect }}>
-      {children}
-    </WalletContext.Provider>
-  );
+  return {
+    client,
+    address,
+    connecting: status === "connecting" || status === "reconnecting",
+    clientError,
+    openConnectModal,
+  };
 }
-
-export const useWallet = () => useContext(WalletContext);

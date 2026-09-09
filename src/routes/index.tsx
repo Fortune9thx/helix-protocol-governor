@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import portrait from "../assets/helix-portrait.jpg";
 import { useHelix } from "../lib/helix-state";
-import { useWallet } from "../lib/wallet";
+import { useHelixWallet } from "../lib/wallet";
 import { approve, readableError, waitForTx } from "../lib/helix-contracts";
 
 export const Route = createFileRoute("/")({
@@ -28,7 +28,7 @@ const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
 
 function Theater() {
   const { spliced, host, refresh, ingesting, jury } = useHelix();
-  const { address, connect } = useWallet();
+  const { client, address, openConnectModal } = useHelixWallet();
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
 
@@ -68,14 +68,14 @@ function Theater() {
   }, []);
 
   async function onApprove() {
-    if (!address) {
-      await connect();
+    if (!client || !address) {
+      openConnectModal?.();
       return;
     }
     setPending(true);
     setNote("Signing approval…");
     try {
-      const hash = await approve(address, address, APPROVE_AMOUNT_WEI);
+      const hash = await approve(client, address, APPROVE_AMOUNT_WEI);
       setNote("Approval submitted. Waiting for consensus…");
       await waitForTx(hash);
       setNote("Approval finalized.");

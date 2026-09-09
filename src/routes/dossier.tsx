@@ -3,7 +3,7 @@ import { useState } from "react";
 import barcode from "../assets/helix-barcode.jpg";
 import { EVIDENCE_DRAIN_URL, EVIDENCE_PHISH_URL } from "../lib/genlayer";
 import { useHelix } from "../lib/helix-state";
-import { useWallet } from "../lib/wallet";
+import { useHelixWallet } from "../lib/wallet";
 import { ingestThreat, readableError, waitForTx } from "../lib/helix-contracts";
 
 export const Route = createFileRoute("/dossier")({
@@ -30,18 +30,18 @@ function Dossier() {
   const [pending, setPending] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const { status, refresh, setIngesting, recordJury } = useHelix();
-  const { address, connect } = useWallet();
+  const { client, openConnectModal } = useHelixWallet();
 
   async function onIngest() {
-    if (!address) {
-      await connect();
+    if (!client) {
+      openConnectModal?.();
       return;
     }
     setFailure(null);
     setPending("submitted   : awaiting signature");
     setIngesting(true);
     try {
-      const hash = await ingestThreat(address, threat.trim(), evidence.trim());
+      const hash = await ingestThreat(client, threat.trim(), evidence.trim());
       setPending("leader      : fetching evidence, running the jury");
       const tally = await waitForTx(hash);
       recordJury(tally);

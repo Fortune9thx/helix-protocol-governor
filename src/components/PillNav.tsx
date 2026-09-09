@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { truncate } from "../lib/genlayer";
-import { useWallet } from "../lib/wallet";
+import { useHelixWallet } from "../lib/wallet";
 
 const items = [
   { to: "/", label: "Theater" },
@@ -9,7 +9,7 @@ const items = [
 ] as const;
 
 export function PillNav() {
-  const { address, connecting, error, connect } = useWallet();
+  const { address, connecting, clientError, openConnectModal } = useHelixWallet();
 
   return (
     <div className="pointer-events-none fixed inset-x-0 top-5 z-50 flex justify-center px-5">
@@ -33,17 +33,17 @@ export function PillNav() {
             <img src="/logo.svg" alt="HELIX" className="h-4 w-auto" />
             <button
               type="button"
-              onClick={() => void connect()}
-              disabled={connecting || address !== null}
+              onClick={() => openConnectModal?.()}
+              disabled={connecting || address !== undefined || !openConnectModal}
               className="rounded-full bg-ink px-5 py-2 text-sm tracking-tight text-cream transition-opacity hover:opacity-85"
             >
               {address ? truncate(address) : connecting ? "Connecting" : "Connect"}
             </button>
           </div>
         </nav>
-        {error && (
+        {clientError && (
           <p className="mr-2 max-w-xs rounded-2xl border border-ink/10 bg-cream/95 px-4 py-2 text-right font-mono text-xs text-ink/75 shadow-sm backdrop-blur-md">
-            {error}
+            {clientError}
           </p>
         )}
       </div>
