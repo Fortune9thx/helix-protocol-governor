@@ -1,34 +1,35 @@
 # DEMO
 
-A continuous take across the Theater, Dossier, and Log views. Wallet connected to
-GenLayer Studio Devnet (chain 61997).
+Recorded on the live app (`helix-protocol-governor.vercel.app`), wallet connected to
+GenLayer Studio Devnet (chain 61997). Recorded as separate clips, not one continuous
+take — on-chain finalization time is real and varies run to run, so the "waiting for
+consensus" stretches are trimmed/sped up in editing rather than performed live.
+Target runtime: under 3:00.
 
-**0:00 — Theater.** `HELIX`, giant, sand-on-cream. "Autonomous protocol. Genome
-governor." Right half: the dithered patient portrait, `PATIENT LIVE`, 4 of 5 dots lit.
-`HostVault V1 · Unlimited approvals allowed.`
+**Clip 1 — Theater, live.** `HELIX`, giant, sand-on-cream. "Autonomous protocol.
+Genome governor." Right half: the dithered patient portrait, `PATIENT LIVE` pulsing,
+five mute jury dots (no ingest has happened yet, so there's no real tally to show —
+the dots never claim a fake number). `HostVault V1 · Unlimited approvals allowed.`
+Connect wallet, click `Approve 100 ETH`, sign in MetaMask, hold through
+`Signing approval… → Approval submitted. Waiting for consensus… → Approval finalized.`
 
-**0:08 — Click `Approve 100 ETH`.** MetaMask prompts, the write goes through. No
-revert. The patient is alive.
+**Clip 2 — Dossier.** The two evidence URLs are prefilled. Click `Ingest threat`, sign
+in MetaMask. The mono dump advances `submitted → leader (fetching evidence, running
+the jury) → finalized (validators agreed)`. Hold on the resulting real on-chain
+fields, not composed in the browser: `should_act`, `family`, `patch`, the model's own
+rationale, and the evidence source URLs.
 
-**0:20 — Switch to Dossier.** Paste the drain advisory URL into `Threat URL`, click
-`Ingest threat`. The pill nav's `Connect` shows the connected address; the mono dump
-below the barcode artwork updates through `submitted → leader → equivalence` as the
-transaction is signed, sent, and reaches consensus.
+**Clip 3 — Theater, frozen.** Back on Theater (it polls automatically): `HostVault
+V2`. `Approve 100 ETH` now reads `Frozen by Helix` — full contrast, not greyed out,
+and disabled, because the contract itself is frozen and a real `approve()` call would
+revert `FROZEN_BY_HELIX`. The caption line underneath spells out why: "...vault
+frozen by Helix after infinite_approve_drain consensus." `PATIENT DEAD`, jury dots lit
+to whatever the real validator AGREE count from Clip 2 actually was (not assumed to be
+any fixed number).
 
-**1:10 — Dump resolves.** Real on-chain fields, not composed in the browser:
-`should_act : true`, `family : infinite_approve_drain`, `patch : SHED_SKIN`, the
-model's own rationale, and the evidence source URLs.
+**Clip 4 — Log.** The four-frame genome sequence: `01 V1 live → 02 Ingest → 03 Jury
+N/5 → 04 V2 spliced`. Oldest first, exactly what just happened, dithered stills
+matching the Theater's own visual system.
 
-**1:20 — Back to Theater.** `HostVault V2`. `Approve 100 ETH` is now
-`Frozen by Helix`, disabled. `PATIENT DEAD`, all 5 dots lit.
-
-**1:35 — Click `Approve 100 ETH` anyway.** It reverts `FROZEN_BY_HELIX` — the contract,
-not a UI guard, refuses the call.
-
-**1:50 — Log.** The four-frame genome sequence: `01 V1 live → 02 Ingest → 03 Jury 4/5
-→ 04 V2 spliced`. Oldest first, exactly what just happened, dithered stills matching
-the Theater's own visual system.
-
-**2:10 — Close on the line:** "Ethereum pauses when a human signs. HELIX splices
-running law when independent models agree the public web says the host is already
-dead."
+**Clip 5 — close on the one line, spoken once:** "Helix read the web, the jury
+agreed, the vault rewrote itself."

@@ -126,6 +126,11 @@ pytest tests/direct/ -v                # 25 tests: family->patch mapping, HostVa
                                          # mechanics, GenomeRegistry access control, evidence-URL SSRF guards
 ```
 
+All 25 pass locally. CI (`.github/workflows/ci.yml`) currently fails on a fresh runner: `gltest`'s
+SDK downloader can't find a published runner bundle for this contract's dependency hash on any
+public genvm release — an upstream tooling gap, not a contract bug (static `genvm-lint check`
+still passes clean in CI). The live on-chain verification below doesn't depend on this toolchain.
+
 ### Deploy and wire the app to it
 
 ```bash

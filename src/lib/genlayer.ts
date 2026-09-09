@@ -24,9 +24,26 @@ type EthereumProvider = {
   removeListener?: (event: string, handler: (...args: unknown[]) => void) => void;
 };
 
+/**
+ * Returns the real MetaMask provider, not just whatever last overwrote
+ * window.ethereum. A second wallet extension (Coinbase Wallet, Phantom,
+ * Rabby...) commonly injects itself too and can shadow window.ethereum
+ * entirely, or window.ethereum.providers holds several and MetaMask isn't
+ * first. Multi-wallet setups where window.ethereum silently isn't MetaMask
+ * are a real, common reason a "Connect" button does nothing.
+ */
 export function getEthereum(): EthereumProvider | null {
   if (typeof window === "undefined") return null;
-  return (window as unknown as { ethereum?: EthereumProvider }).ethereum ?? null;
+  const injected = (
+    window as unknown as {
+      ethereum?: EthereumProvider & { providers?: EthereumProvider[] };
+    }
+  ).ethereum;
+  if (!injected) return null;
+  if (injected.providers?.length) {
+    return injected.providers.find((p) => p.isMetaMask) ?? injected.providers[0] ?? injected;
+  }
+  return injected;
 }
 
 export async function getChain() {
@@ -71,7 +88,7 @@ export async function chainIdHex(): Promise<string> {
 /** Connect MetaMask and make sure it is pointed at the configured GenLayer chain. */
 export async function connectWallet(): Promise<string> {
   const eth = getEthereum();
-  if (!eth) throw new Error("MetaMask not found");
+  if (!eth) throw new Error("No wallet found. Install MetaMask and reload the page.");
 
   const accounts = (await eth.request({ method: "eth_requestAccounts" })) as string[];
   const account = accounts[0];

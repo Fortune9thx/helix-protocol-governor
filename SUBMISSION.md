@@ -82,8 +82,6 @@ read the advisory and already voted.
   the validator independently re-derives rather than shape-checks, HostVault's full
   freeze/version/constitution state machine, GenomeRegistry's patch CRUD + access
   control, and the SSRF suite above.
-- CI (`.github/workflows/ci.yml`) actually runs `genvm-lint` + `pytest` + a frontend
-  typecheck on every push, not just locally.
 - The full loop has been verified live on Studio Devnet, not just in direct-mode
   tests: a real `ingest_threat` call against the drain-advisory evidence URL fetched
   the page, classified it `infinite_approve_drain` at 93% confidence, reached
