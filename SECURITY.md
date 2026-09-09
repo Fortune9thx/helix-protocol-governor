@@ -30,10 +30,21 @@ URL).
 ## Native code upgrade
 
 `SHED_SKIN` replaces `HostVault`'s running source via GenVM's native `root.code`
-upgrade primitive (`root.code.get().truncate()` / `.extend()`), gated on the caller
-being in the vault's `upgraders` list — `Helix` is added to that list by the same
-`set_governor` call that grants it write access, so only `Helix` (i.e. only a
-consensus-reached decision) can ever trigger the splice.
+upgrade primitive (`root.code.get().truncate()` / `.extend()`). Writes to that slot
+are platform-gated: GenVM raises a `VMError` for any sender not in the contract's
+`upgraders` list, per the official upgradability docs. `Helix` is added to that list
+by the same `set_governor` call that grants it write access.
+
+`HostVault` also exposes a standalone `upgrade(new_code)` write method (independent
+of `apply_mutation`'s own inline splice). Because `set_governor` only ever *appends*
+to `upgraders` and never removes the original deployer, the deployer EOA stays on
+that list permanently — the platform-level check alone would let the deployer call
+`upgrade()` directly and rewrite the vault's code with no consensus round, which
+directly contradicts the "no human, no council" trust model above. `upgrade()` is
+now also gated `governor`-only at the application level (same precondition
+`apply_mutation` uses), so in practice only `Helix` — i.e. only a finalized consensus
+decision — can reach `root.code`, regardless of who GenVM's own `upgraders` list
+still contains.
 
 ## Known trade-offs
 
@@ -43,11 +54,23 @@ consensus-reached decision) can ever trigger the splice.
   liveness concern: nothing is pending resolution, and a freeze is the intended
   security response, not an accidental lock.
 - `Helix.ingest_threat`'s cross-contract writes to `HostVault`
-  (`host.emit(on="accepted").apply_mutation(...)`) are asynchronous by GenVM design —
+  (`host.emit(on="decided").apply_mutation(...)`) are asynchronous by GenVM design —
   a mutation lands as a separate, independently-consensus-reached child transaction
   after `ingest_threat`'s own transaction is accepted. The UI reflects this by polling
   `HostVault.get_state()` rather than assuming the mutation applied the instant
   `ingest_threat` is accepted.
+- `HostVault.approve`/`allowances` model the ERC20-style "unlimited approval" surface
+  the threat narrative reacts to, but this contract never implements a
+  `transferFrom`-style consumer of that allowance — there is no on-chain drain path to
+  demonstrate against. HELIX reacts to *evidence* that this threat class exists (an
+  advisory URL), the same way a real deployed DeFi vault would react to a live
+  disclosure about itself; it does not stage the exploit on-chain.
+- `HostVault.withdraw(to, amount)` sends value to any address with no check that `to`
+  is a human EOA rather than another contract. GenVM has no on-chain primitive to
+  distinguish the two, and a value-only `emit_transfer` to another Intelligent
+  Contract is known to fail silently with no rescue path — see the platform
+  limitations below. `withdraw` is owner-only, so this risk is scoped to the owner's
+  own input, not a caller-supplied attack surface.
 
 ## Operational risk: studio-dev's RPC rate limit
 
