@@ -11,6 +11,7 @@
  */
 
 import { HELIX_ADDRESS, HOST_VAULT_ADDRESS, readClient, writeClient } from "./genlayer";
+import { isSuccessful } from "genlayer-js";
 
 export type HostState = {
   genomeVersion: string;
@@ -140,8 +141,15 @@ export async function ingestThreat(account: string, urlA: string, urlB: string):
 }
 
 /**
- * Waits for FINALIZED. Callers should also check the receipt/a fresh read for
- * FINISHED_WITH_RETURN.
+ * Waits for FINALIZED and throws unless the transaction actually succeeded.
+ * Reaching FINALIZED only means consensus reached a terminal state - it does
+ * NOT mean the write did anything. A validator disagreement (DISAGREE/
+ * UNDETERMINED - no equivalence reached, nothing persisted) or a reverted
+ * UserError (FINISHED_WITH_ERROR) both finalize cleanly with no thrown
+ * exception from waitForFinalization itself. isSuccessful() is the same
+ * genlayer-js helper scripts/deploy.ts uses to gate its own success claim -
+ * checking only "did the promise resolve" here would let the UI declare
+ * "finalized" on a call that changed nothing on-chain.
  *
  * studio-dev enforces a hard per-account RPC rate limit (500 req/hour,
  * confirmed empirically) and a tight poll interval burns through it fast -
@@ -152,7 +160,18 @@ export async function ingestThreat(account: string, urlA: string, urlB: string):
  */
 export async function waitForTx(hash: string): Promise<void> {
   const client = await readClient();
-  await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never);
+  const receipt = await client.waitForFinalization({ hash, retries: 60, interval: 10000 } as never);
+  const r = receipt as unknown as {
+    status_name?: string;
+    result_name?: string;
+    lifecycle?: { state?: string; outcome?: string };
+  };
+  const finalized = r.lifecycle?.state === "finalized";
+  if (!finalized || !isSuccessful(receipt as never)) {
+    throw new Error(
+      `Transaction did not finalize successfully: status=${r.status_name} result=${r.result_name} lifecycle=${JSON.stringify(r.lifecycle)}`,
+    );
+  }
 }
 
 /**
@@ -170,5 +189,12 @@ export function readableError(err: unknown): string {
   if (raw.includes("above max_approval")) return "above max_approval";
   if (raw.includes("evidence url")) return raw.match(/evidence url[^"\\]*/)?.[0] ?? raw;
   if (/user rejected|denied|4001/i.test(raw)) return "Signature rejected.";
+  if (raw.includes("did not finalize successfully")) {
+    if (/result=DISAGREE|status=UNDETERMINED/.test(raw)) {
+      return "Validators disagreed - nothing was recorded. Try again.";
+    }
+    if (raw.includes("CANCELED")) return "Transaction expired before a validator picked it up. Try again.";
+    return "Transaction finalized without succeeding.";
+  }
   return raw.length > 120 ? `${raw.slice(0, 117)}…` : raw;
 }

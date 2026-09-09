@@ -64,6 +64,8 @@ class HostVault(gl.contract.Contract):
 
     @gl.public.write
     def upgrade(self, new_code: bytes) -> None:
+        if gl.message.sender_address != self.governor:
+            raise gl.vm.UserError("not governor")
         root = gl.storage.Root.get()
         code = root.code.get()
         code.truncate()

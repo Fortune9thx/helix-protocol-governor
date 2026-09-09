@@ -106,6 +106,7 @@ class HostVault(gl.contract.Contract):
 
     @gl.public.write
     def upgrade(self, new_code: bytes) -> None:
+        self._only_governor()
         root = gl.storage.Root.get()
         code = root.code.get()
         code.truncate()
