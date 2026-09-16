@@ -21,7 +21,7 @@ const JURY_STORAGE_KEY = "helix:jury";
 type HelixState = {
   /** True when the vault is really frozen on-chain, or the local preview is on. */
   spliced: boolean;
-  /** Flips the local "Spliced preview" control. */
+  /** Flips the local demo state control. */
   setSpliced: (v: boolean) => void;
   /** Live HostVault state, null until the first read lands. */
   host: HostState | null;
