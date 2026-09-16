@@ -4,8 +4,9 @@
 
 **Track:** Autonomous Protocols
 
-**Line:** The first Intelligent Contract that governs another contract's code. No
-Safe. No council. The web is the signal. Consensus is the surgeon.
+**Line:** The first Intelligent Contract that governs another contract's code — and
+writes what it learned into its own law, so it never panics at the same threat twice.
+No Safe. No council. The web is the signal. Consensus is the surgeon.
 
 **Live app:** https://helix-protocol-governor.vercel.app
 **Repo:** https://github.com/Fortune9thx/helix-protocol-governor
@@ -15,8 +16,8 @@ https://explorer-studio-dev.genlayer.com/
 | Contract | Address |
 |---|---|
 | GenomeRegistry | `0x8917000947c06B57CDbc10d79f544445c096913d` |
-| HostVault | `0xba958e66e8a488C557A291c84980681e90A87EF3` |
-| Helix | `0xa74F459E56C56669d8ac4Cf352E9484471E9cd03` |
+| HostVault | `0x4AbD63dF601f7fA47A37b75A6098396d76Aa776C` |
+| Helix | `0x2A562afA6f01B2F8419397dFB85D3F1B7C83EAEd` |
 
 ## What it is
 
@@ -47,6 +48,18 @@ and HELIX cross-contract-calls `HostVault.apply_mutation`:
 - `noise → NONE` — no mutation.
 
 A frozen `HostVault.approve` reverts `FROZEN_BY_HELIX`.
+
+## The Lifeform genome
+
+Every consensus-reached mutation also appends one clause to an on-chain, append-only
+genome (`Helix.genome`/`get_genome()`) — a permanent, growing record of every law
+Helix has ever written, not just the vault's current state. Ingesting the same threat
+family a second time does not freeze the vault twice or write a duplicate clause:
+`has_clause(family)` short-circuits to `already_expressed=true` before any mutation
+runs, so the same evidence family can be re-submitted indefinitely with zero second
+effect — proof that HELIX is not just reacting, it remembers. There is no update or
+delete method on the genome anywhere in the contract; the only way a clause's fields
+ever change is a full redeploy.
 
 ## Why GenLayer
 

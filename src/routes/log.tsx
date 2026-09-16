@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import f1 from "../assets/frame-01.jpg";
-import f2 from "../assets/frame-02.jpg";
-import f3 from "../assets/frame-03.jpg";
-import f4 from "../assets/frame-04.jpg";
+import { useEffect, useState } from "react";
+import { readGenome, type GenomeClause } from "../lib/helix-contracts";
+import { isConfigured } from "../lib/genlayer";
 
 export const Route = createFileRoute("/log")({
   head: () => ({
@@ -10,54 +9,81 @@ export const Route = createFileRoute("/log")({
       { title: "HELIX — Genome | Vault mutation log" },
       {
         name: "description",
-        content: "The HELIX genome log: V1 live, ingest, jury 4/5, V2 spliced.",
+        content: "The HELIX genome log: every law-clause the governor has actually written on-chain.",
       },
       { property: "og:title", content: "HELIX — Genome" },
       {
         property: "og:description",
-        content: "The HELIX genome log: V1 live, ingest, jury 4/5, V2 spliced.",
+        content: "The HELIX genome log: every law-clause the governor has actually written on-chain.",
       },
     ],
   }),
   component: Log,
 });
 
-const frames = [
-  { n: "01", title: "V1 live", img: f1, note: "HostVault V1 holds custody. Unlimited allowance open." },
-  { n: "02", title: "Ingest", img: f2, note: "Threat and evidence sources pulled into the dossier." },
-  { n: "03", title: "Jury 4/5", img: f3, note: "Four of five equivalent marks returned should_act." },
-  { n: "04", title: "V2 spliced", img: f4, note: "Patch applied. Approval path frozen, V2 governs." },
-];
-
 function Log() {
+  const [clauses, setClauses] = useState<GenomeClause[] | null>(null);
+
+  useEffect(() => {
+    if (!isConfigured()) {
+      setClauses([]);
+      return;
+    }
+    let cancelled = false;
+    void readGenome()
+      .then((c) => {
+        if (!cancelled) setClauses(c);
+      })
+      .catch(() => {
+        if (!cancelled) setClauses([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <main className="min-h-screen bg-cream px-8 pt-32 pb-24 md:px-14">
       <div className="flex flex-col justify-between gap-6 md:flex-row md:items-start">
         <h1 className="text-[16vw] leading-[0.84] text-ink md:text-[8vw]">Genome</h1>
         <p className="max-w-sm text-sm text-ink/65 md:mt-6">
-          Sequence of vault states recorded by the governor, oldest first.
+          Every clause the governor has actually written, oldest first. Real on-chain
+          state, not a staged sequence.
         </p>
       </div>
       <div className="mt-8 h-px w-full bg-ink/15" />
 
-      <div className="mt-12 grid gap-8 md:grid-cols-4">
-        {frames.map((f) => (
-          <article key={f.n}>
-            <img
-              src={f.img}
-              alt={`Dithered still for stage ${f.n}, ${f.title}`}
-              width={768}
-              height={768}
-              loading="lazy"
-              className="aspect-square w-full object-cover"
-            />
-            <p className="mt-5 font-mono text-xs text-ink/50">{f.n}</p>
-            <div className="mt-3 h-px w-full bg-ink/20" />
-            <h2 className="mt-4 text-2xl tracking-tight text-ink">{f.title}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink/65">{f.note}</p>
-          </article>
-        ))}
-      </div>
+      {clauses === null ? (
+        <p className="mt-16 font-mono text-xs tracking-[0.2em] text-ink/45 uppercase">
+          Reading genome…
+        </p>
+      ) : clauses.length === 0 ? (
+        <p className="mt-16 max-w-sm text-sm text-ink/55">
+          No clauses yet. The genome is empty until Helix's first consensus round writes
+          one.
+        </p>
+      ) : (
+        <div className="mt-12 grid gap-8 md:grid-cols-4">
+          {clauses.map((c) => (
+            <article key={c.clauseId}>
+              <p className="font-mono text-xs text-ink/50">
+                {c.clauseId.padStart(2, "0")}
+              </p>
+              <div className="mt-3 h-px w-full bg-ink/20" />
+              <h2 className="mt-4 text-2xl tracking-tight text-ink">{c.family}</h2>
+              <p className="mt-1 font-mono text-xs tracking-[0.15em] text-ink/50 uppercase">
+                {c.patchId}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/65">{c.text}</p>
+              {c.sourceUrl && (
+                <p className="mt-2 truncate font-mono text-[11px] text-ink/40">
+                  {c.sourceUrl}
+                </p>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </main>
   );
 }

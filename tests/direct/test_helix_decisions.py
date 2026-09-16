@@ -47,6 +47,8 @@ def _status(contract):
         "rationale": parts[3],
         "urls": parts[4],
         "organ": parts[5],
+        "generation": parts[6],
+        "already_expressed": parts[7],
     }
 
 
@@ -83,6 +85,15 @@ def test_drain_advisory_maps_to_shed_skin(direct_vm, direct_deploy, direct_owner
     assert status["family"] == "infinite_approve_drain"
     assert status["patch"] == "SHED_SKIN"
     assert drain_url in status["urls"]
+    assert status["generation"] == "1"
+    assert status["already_expressed"] == "false"
+    assert contract.has_clause("infinite_approve_drain") is True
+    genome = contract.get_genome()
+    assert genome.count("\n") == 0  # exactly one clause, no line break yet
+    row = genome.split("||")
+    assert row[0] == "1"
+    assert row[1] == "infinite_approve_drain"
+    assert row[2] == "SHED_SKIN"
 
 
 def test_phishing_kit_maps_to_grow_organ(direct_vm, direct_deploy, direct_owner):
@@ -117,6 +128,8 @@ def test_phishing_kit_maps_to_grow_organ(direct_vm, direct_deploy, direct_owner)
     status = _status(contract)
     assert status["family"] == "permit_phishing_kit"
     assert status["patch"] == "GROW_ORGAN"
+    assert status["generation"] == "1"
+    assert status["already_expressed"] == "false"
 
 
 def test_unrelated_page_maps_to_noise_no_mutation(direct_vm, direct_deploy, direct_owner):
@@ -153,6 +166,101 @@ def test_unrelated_page_maps_to_noise_no_mutation(direct_vm, direct_deploy, dire
     assert status["patch"] == "NONE"
     # No organ was ever spawned for a no-act decision.
     assert status["organ"] == "0x" + "00" * 20 or status["organ"] == ""
+    # Noise never writes a clause - the genome stays empty, not a fake entry.
+    assert status["generation"] == "0"
+    assert contract.get_genome() == ""
+
+
+def test_same_family_twice_is_already_expressed_not_a_second_mutation(
+    direct_vm, direct_deploy, direct_owner
+):
+    """The second ingest of the same already-lawed family must not mutate
+    the host again or append a duplicate clause - it should only flip
+    already_expressed on the status dump."""
+    contract = _deploy_helix(direct_deploy, direct_vm, direct_owner)
+
+    drain_url = "https://evidence.example.com/drain-advisory.html"
+    direct_vm.mock_web(
+        r"drain-advisory",
+        {"status": 200, "body": "Unlimited approval drain. Active exploitation observed."},
+    )
+    direct_vm.mock_llm(
+        r".*",
+        json.dumps(
+            {
+                "should_act": True,
+                "threat_family": "infinite_approve_drain",
+                "confidence": 92,
+                "rationale": "Drain advisory.",
+            }
+        ),
+    )
+
+    contract.ingest_threat(drain_url, "")
+    first = _status(contract)
+    assert first["already_expressed"] == "false"
+    assert first["generation"] == "1"
+
+    contract.ingest_threat(drain_url, "")
+    second = _status(contract)
+    assert second["already_expressed"] == "true"
+    # mutation_count still records that an ingest happened...
+    assert second["mutation_count"] == "2"
+    # ...but the genome and generation counter did not grow.
+    assert second["generation"] == "1"
+    assert contract.get_genome().count("\n") == 0
+
+
+def test_second_distinct_family_appends_a_second_clause(
+    direct_vm, direct_deploy, direct_owner
+):
+    contract = _deploy_helix(direct_deploy, direct_vm, direct_owner)
+
+    drain_url = "https://evidence.example.com/drain-advisory.html"
+    direct_vm.mock_web(
+        r"drain-advisory",
+        {"status": 200, "body": "Unlimited approval drain. Active exploitation observed."},
+    )
+    direct_vm.mock_llm(
+        r".*",
+        json.dumps(
+            {
+                "should_act": True,
+                "threat_family": "infinite_approve_drain",
+                "confidence": 92,
+                "rationale": "Drain advisory.",
+            }
+        ),
+    )
+    contract.ingest_threat(drain_url, "")
+
+    phish_url = "https://evidence.example.com/phishing-kit.html"
+    direct_vm.clear_mocks()
+    direct_vm.mock_web(
+        r"phishing-kit",
+        {"status": 200, "body": "Permit phishing kit circulating against typed signatures."},
+    )
+    direct_vm.mock_llm(
+        r".*",
+        json.dumps(
+            {
+                "should_act": True,
+                "threat_family": "permit_phishing_kit",
+                "confidence": 88,
+                "rationale": "Permit phishing kit.",
+            }
+        ),
+    )
+    contract.ingest_threat(phish_url, "")
+
+    status = _status(contract)
+    assert status["already_expressed"] == "false"
+    assert status["generation"] == "2"
+    genome = contract.get_genome()
+    assert genome.count("\n") == 1
+    assert contract.has_clause("infinite_approve_drain") is True
+    assert contract.has_clause("permit_phishing_kit") is True
+    assert contract.has_clause("active_exploit_unknown") is False
 
 
 def test_validator_agrees_with_independent_reexecution(

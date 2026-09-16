@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
 const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
 
 function Theater() {
-  const { spliced, host, refresh, ingesting, jury } = useHelix();
+  const { spliced, host, status, refresh, ingesting, jury } = useHelix();
   const { client, address, openConnectModal } = useHelixWallet();
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -103,6 +103,10 @@ function Theater() {
         </h1>
         <p className="mt-6 max-w-md text-base text-ink/70">
           Autonomous protocol. Genome governor.
+        </p>
+        <p className="mt-2 font-mono text-xs tracking-[0.2em] text-ink/45 uppercase">
+          GEN {status?.generation ?? "0"} · {status?.generation ?? "0"} clause
+          {status?.generation === "1" ? "" : "s"}
         </p>
         <div className="mt-8 h-px w-full max-w-md bg-ink/20" />
         <div className="mt-8">

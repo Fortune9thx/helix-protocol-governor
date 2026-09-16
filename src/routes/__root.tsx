@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -129,6 +129,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function SpliceControl() {
   const { spliced, setSpliced } = useHelix();
+  // A visible "fake it" toggle reads as staged consensus to anyone judging
+  // this live - the real HostVault.frozen state already drives `spliced`
+  // for everyone else. Keep the dev/demo escape hatch, but require an
+  // explicit ?preview=1 in the URL rather than showing it by default.
+  const [previewAllowed, setPreviewAllowed] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setPreviewAllowed(new URLSearchParams(window.location.search).get("preview") === "1");
+  }, []);
+  if (!previewAllowed) return null;
   return (
     <button
       type="button"

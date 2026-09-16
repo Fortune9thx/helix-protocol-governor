@@ -63,11 +63,14 @@ function Dossier() {
       ? `error        : ${failure}`
       : status && status.mutationCount !== "0"
         ? [
-            `should_act   : ${status.lastPatch !== "NONE"}`,
+            status.alreadyExpressed
+              ? "verdict      : ALREADY LAW - this family was already ruled on, no new splice"
+              : `should_act   : ${status.lastPatch !== "NONE"}`,
             `family       : ${status.lastFamily || "—"}`,
             `patch        : ${status.lastPatch}`,
             `rationale    : ${status.lastRationale || "—"}`,
             `sources      : ${status.lastUrls || "—"}`,
+            `generation   : ${status.generation}`,
           ].join("\n")
         : null;
 

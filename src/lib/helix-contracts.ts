@@ -34,6 +34,18 @@ export type HelixStatus = {
   lastRationale: string;
   lastUrls: string;
   lastOrgan: string;
+  generation: string;
+  alreadyExpressed: boolean;
+};
+
+export type GenomeClause = {
+  clauseId: string;
+  family: string;
+  patchId: string;
+  sourceUrl: string;
+  writtenGen: string;
+  text: string;
+  expressed: boolean;
 };
 
 export function parseHostState(raw: string): HostState {
@@ -59,7 +71,26 @@ export function parseHelixStatus(raw: string): HelixStatus {
     lastRationale: p[3] ?? "",
     lastUrls: p[4] ?? "",
     lastOrgan: p[5] ?? "",
+    generation: p[6] ?? "0",
+    alreadyExpressed: p[7] === "true",
   };
+}
+
+/** get_genome()'s wire format: one clause per line, fields joined by ||. */
+export function parseGenome(raw: string): GenomeClause[] {
+  if (!raw) return [];
+  return raw.split("\n").map((line) => {
+    const p = line.split("||");
+    return {
+      clauseId: p[0] ?? "",
+      family: p[1] ?? "",
+      patchId: p[2] ?? "",
+      sourceUrl: p[3] ?? "",
+      writtenGen: p[4] ?? "",
+      text: p[5] ?? "",
+      expressed: p[6] === "true",
+    };
+  });
 }
 
 export async function readHostState(): Promise<HostState> {
@@ -80,6 +111,17 @@ export async function readHelixStatus(): Promise<HelixStatus> {
     args: [],
   })) as string;
   return parseHelixStatus(raw);
+}
+
+/** Log's genome rows - real on-chain clauses, oldest first. Empty array = honest empty state. */
+export async function readGenome(): Promise<GenomeClause[]> {
+  const client = await readClient();
+  const raw = (await client.readContract({
+    address: HELIX_ADDRESS as `0x${string}`,
+    functionName: "get_genome",
+    args: [],
+  })) as string;
+  return parseGenome(raw);
 }
 
 /**

@@ -99,7 +99,21 @@ class Helix(gl.contract.Contract):
     last_rationale: str
     last_urls: str
     last_organ: Address
+    last_already_expressed: bool
     watchdog_code: str
+    # Append-only genome: clause_id (stringified) -> packed clause record.
+    # Mirrors HostVault's organs/organ_count split (TreeMap + counter) - the
+    # one storage pattern already proven to deploy and read back correctly
+    # on this dependency hash, rather than reaching for DynArray/dataclass
+    # (both have a documented crash history on earlier generations - see
+    # clao-deferred-features memory - and neither has been proven on this
+    # one, so there's no reason to risk it for a plain append-only log).
+    genome: gl.storage.TreeMap[str, str]
+    generation: u256
+    # family -> clause_id already written for it. Separate from `genome`
+    # (keyed by clause_id) for an O(1) has_clause() lookup instead of
+    # scanning every clause on every ingest.
+    expressed_families: gl.storage.TreeMap[str, str]
 
     def __init__(self, host: str, registry: str, watchdog_code: str):
         self.owner = gl.message.sender_address
@@ -111,9 +125,39 @@ class Helix(gl.contract.Contract):
         self.last_rationale = ""
         self.last_urls = ""
         self.last_organ = Address("0x" + "00" * 20)
+        self.last_already_expressed = False
         self.watchdog_code = watchdog_code
+        self.generation = 0
         root = gl.storage.Root.get()
         root.upgraders.get().append(gl.message.sender_address)
+
+    @gl.public.view
+    def has_clause(self, family: str) -> bool:
+        return self.expressed_families.get(family, "") != ""
+
+    def _clause_text(self, family: str) -> str:
+        if family == "infinite_approve_drain":
+            return "never allow infinite approve after this family is proven live"
+        if family == "permit_phishing_kit":
+            return "never allow unwatched permit signing after this family is proven live"
+        if family == "active_exploit_unknown":
+            return "halt on this family until it is reclassified"
+        return "no action required for this family"
+
+    def _append_clause(self, family: str, patch_id: str, source_url: str) -> None:
+        self.generation = self.generation + 1
+        clause_id = self.generation
+        record = (
+            str(clause_id)
+            + "||" + family
+            + "||" + patch_id
+            + "||" + source_url
+            + "||" + str(clause_id)
+            + "||" + self._clause_text(family)
+            + "||" + "true"
+        )
+        self.genome[str(clause_id)] = record
+        self.expressed_families[family] = str(clause_id)
 
     @gl.public.write
     def ingest_threat(self, url_a: str, url_b: str) -> None:
@@ -210,14 +254,25 @@ class Helix(gl.contract.Contract):
             )
 
         decision = gl.vm.run_nondet(leader_fn, validator_fn)
-        self.last_family = str(decision["threat_family"])
+        family = str(decision["threat_family"])
+        self.last_family = family
         self.last_patch = str(decision["patch_id"])
         self.last_rationale = str(decision["rationale"])
         self.last_urls = url_a_local + " " + url_b_local
         self.mutation_count = self.mutation_count + 1
 
         if (not decision["should_act"]) or decision["patch_id"] == "NONE":
+            self.last_already_expressed = False
             return
+
+        # Same family, already law: no second mutation, no duplicate clause.
+        # Recorded as already_expressed so the caller can tell "nothing
+        # happened because it's already handled" apart from "nothing
+        # happened because the evidence was noise".
+        if self.has_clause(family):
+            self.last_already_expressed = True
+            return
+        self.last_already_expressed = False
 
         registry = gl.contract.get_at(self.registry)
         new_constitution = registry.view().get_constitution(decision["patch_id"])
@@ -238,6 +293,7 @@ class Helix(gl.contract.Contract):
             new_max,
             True,
         )
+        self._append_clause(family, decision["patch_id"], url_a_local)
 
         if decision["patch_id"] == "GROW_ORGAN":
             try:
@@ -270,4 +326,25 @@ class Helix(gl.contract.Contract):
             + "||" + self.last_rationale
             + "||" + self.last_urls
             + "||" + organ
+            + "||" + str(self.generation)
+            + "||" + ("true" if self.last_already_expressed else "false")
         )
+
+    @gl.public.view
+    def get_generation(self) -> u256:
+        return self.generation
+
+    @gl.public.view
+    def get_genome(self) -> str:
+        """Every clause, oldest first, one per line: clause_id||family||
+        patch_id||source_url||written_gen||text||expressed. Empty genome
+        returns an empty string - the frontend's honest empty state, not a
+        placeholder row."""
+        rows = []
+        i = 1
+        while i <= int(self.generation):
+            row = self.genome.get(str(i), "")
+            if row:
+                rows.append(row)
+            i = i + 1
+        return "\n".join(rows)

@@ -151,8 +151,8 @@ prompt for a wallet and fail with a real error message rather than crash.
 | Contract | Address |
 |---|---|
 | GenomeRegistry | `0x8917000947c06B57CDbc10d79f544445c096913d` |
-| HostVault | `0xba958e66e8a488C557A291c84980681e90A87EF3` |
-| Helix | `0xa74F459E56C56669d8ac4Cf352E9484471E9cd03` |
+| HostVault | `0x4AbD63dF601f7fA47A37b75A6098396d76Aa776C` |
+| Helix | `0x2A562afA6f01B2F8419397dFB85D3F1B7C83EAEd` |
 
 Explorer: https://explorer-studio-dev.genlayer.com/. Studio Devnet is a
 release-candidate environment and may reset — if these addresses stop resolving,
