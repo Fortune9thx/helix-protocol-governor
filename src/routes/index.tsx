@@ -27,10 +27,11 @@ export const Route = createFileRoute("/")({
 const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
 
 function Theater() {
-  const { spliced, host, status, refresh, ingesting, jury } = useHelix();
+  const { hosts, selectedHost, setSelectedHost, spliced, hostStates, status, refresh, ingesting, jury } = useHelix();
   const { client, address, openConnectModal } = useHelixWallet();
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const host = hostStates[selectedHost];
 
   // PATIENT DEAD's glitch and the Approve label's fade must each fire once,
   // exactly when spliced flips false -> true (or back), not on every
@@ -46,7 +47,7 @@ function Theater() {
   }, [spliced]);
 
   // Jury dots should only replay their "tick in" animation right after a
-  // real ingest finishes, never on an ordinary re-render or on load from a
+  // real alarm finishes, never on an ordinary re-render or on load from a
   // stored tally.
   const prevIngesting = useRef(ingesting);
   const [tallyKey, setTallyKey] = useState(0);
@@ -75,7 +76,7 @@ function Theater() {
     setPending(true);
     setNote("Signing approval…");
     try {
-      const hash = await approve(client, address, APPROVE_AMOUNT_WEI);
+      const hash = await approve(client, selectedHost, address, APPROVE_AMOUNT_WEI);
       setNote("Approval submitted. Waiting for consensus…");
       await waitForTx(hash);
       setNote("Approval finalized.");
@@ -108,6 +109,28 @@ function Theater() {
           GEN {status?.generation ?? "0"} · {status?.generation ?? "0"} clause
           {status?.generation === "1" ? "" : "s"}
         </p>
+
+        {hosts.length > 1 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {hosts.map((h) => (
+              <button
+                key={h.address}
+                type="button"
+                onClick={() => setSelectedHost(h.address)}
+                className={
+                  "rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.15em] uppercase transition-colors " +
+                  (h.address === selectedHost
+                    ? "border-ink bg-ink text-cream"
+                    : "border-ink/20 text-ink/60 hover:border-ink/50")
+                }
+              >
+                {h.label}
+                {hostStates[h.address]?.frozen ? " · frozen" : ""}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="mt-8 h-px w-full max-w-md bg-ink/20" />
         <div className="mt-8">
           <button

@@ -91,3 +91,17 @@ class HostVault(gl.contract.Contract):
     @gl.public.view
     def genome_label(self) -> str:
         return "HELIX_SPLICED_V2"
+
+    # ---------- HostIface (see host_vault.py) ----------
+
+    @gl.public.view
+    def is_frozen(self) -> bool:
+        return self.frozen
+
+    @gl.public.view
+    def version(self) -> u256:
+        return self.genome_version
+
+    @gl.public.view
+    def get_governor(self) -> Address:
+        return self.governor

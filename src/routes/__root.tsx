@@ -7,7 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import "@rainbow-me/rainbowkit/styles.css";
@@ -15,7 +15,7 @@ import "@rainbow-me/rainbowkit/styles.css";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PillNav } from "../components/PillNav";
-import { HelixProvider, useHelix } from "../lib/helix-state";
+import { HelixProvider } from "../lib/helix-state";
 import { wagmiConfig } from "../lib/wagmi-config";
 
 function NotFoundComponent() {
@@ -127,37 +127,6 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
-function SpliceControl() {
-  const { spliced, setSpliced } = useHelix();
-  // A visible "fake it" toggle reads as staged consensus to anyone judging
-  // this live - the real HostVault.frozen state already drives `spliced`
-  // for everyone else. Keep the dev/demo escape hatch, but require an
-  // explicit ?preview=1 in the URL rather than showing it by default.
-  const [previewAllowed, setPreviewAllowed] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    setPreviewAllowed(new URLSearchParams(window.location.search).get("preview") === "1");
-  }, []);
-  if (!previewAllowed) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => setSpliced(!spliced)}
-      aria-pressed={spliced}
-      className="fixed bottom-6 left-6 z-50 flex items-center gap-3 rounded-full border border-ink/15 bg-cream/85 px-5 py-2.5 backdrop-blur-md"
-    >
-      <span
-        className={
-          "h-2 w-2 rounded-[1px] " + (spliced ? "bg-ink" : "bg-ink/25")
-        }
-      />
-      <span className="font-mono text-xs tracking-[0.18em] text-ink/70 uppercase">
-        Spliced preview
-      </span>
-    </button>
-  );
-}
-
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -169,7 +138,6 @@ function RootComponent() {
             <PillNav />
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
-            <SpliceControl />
           </HelixProvider>
         </RainbowKitProvider>
       </QueryClientProvider>

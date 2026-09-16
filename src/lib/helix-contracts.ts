@@ -1,8 +1,8 @@
 /**
- * Typed reads/writes against the deployed HELIX contracts.
+ * Typed reads/writes against the deployed HELIX Ward contracts.
  *
- * HostVault.get_state()  -> "version||frozen||max_approval||constitution||patch||family||mutation||organ_count"
- * Helix.get_status()     -> "count||family||patch||rationale||urls||organ"
+ * HostVault.get_state() -> "version||frozen||max_approval||constitution||patch||family||mutation||organ_count"
+ * Helix.get_status()    -> "alarm_count||host_count||organ||generation||treasury"
  *
  * studio-dev (consensus v0.6 RC) is fee-funded: every deploy/write must
  * carry an SDK fee estimate, and success is only proven once a transaction
@@ -10,7 +10,7 @@
  * https://docs.genlayer.com/developers/consensus-v06-migration
  */
 
-import { HELIX_ADDRESS, HOST_VAULT_ADDRESS, readClient } from "./genlayer";
+import { HELIX_ADDRESS, readClient } from "./genlayer";
 import { isSuccessful } from "genlayer-js";
 import type { GenLayerClient, GenLayerChain } from "genlayer-js/types";
 
@@ -28,14 +28,11 @@ export type HostState = {
 };
 
 export type HelixStatus = {
-  mutationCount: string;
-  lastFamily: string;
-  lastPatch: string;
-  lastRationale: string;
-  lastUrls: string;
+  alarmCount: string;
+  hostCount: string;
   lastOrgan: string;
   generation: string;
-  alreadyExpressed: boolean;
+  treasury: string;
 };
 
 export type GenomeClause = {
@@ -46,6 +43,20 @@ export type GenomeClause = {
   writtenGen: string;
   text: string;
   expressed: boolean;
+};
+
+export type Alarm = {
+  alarmId: string;
+  filer: string;
+  host: string;
+  threatUrl: string;
+  evidenceUrl: string;
+  family: string;
+  patchId: string;
+  shouldAct: boolean;
+  alreadyExpressed: boolean;
+  status: "acted" | "already_expressed" | "slashed" | string;
+  bond: string;
 };
 
 export function parseHostState(raw: string): HostState {
@@ -65,14 +76,11 @@ export function parseHostState(raw: string): HostState {
 export function parseHelixStatus(raw: string): HelixStatus {
   const p = raw.split("||");
   return {
-    mutationCount: p[0] ?? "0",
-    lastFamily: p[1] ?? "",
-    lastPatch: p[2] ?? "NONE",
-    lastRationale: p[3] ?? "",
-    lastUrls: p[4] ?? "",
-    lastOrgan: p[5] ?? "",
-    generation: p[6] ?? "0",
-    alreadyExpressed: p[7] === "true",
+    alarmCount: p[0] ?? "0",
+    hostCount: p[1] ?? "0",
+    lastOrgan: p[2] ?? "",
+    generation: p[3] ?? "0",
+    treasury: p[4] ?? "0",
   };
 }
 
@@ -93,10 +101,28 @@ export function parseGenome(raw: string): GenomeClause[] {
   });
 }
 
-export async function readHostState(): Promise<HostState> {
+function parseAlarm(raw: string): Alarm | null {
+  if (!raw) return null;
+  const p = raw.split("||");
+  return {
+    alarmId: p[0] ?? "",
+    filer: p[1] ?? "",
+    host: p[2] ?? "",
+    threatUrl: p[3] ?? "",
+    evidenceUrl: p[4] ?? "",
+    family: p[5] ?? "",
+    patchId: p[6] ?? "",
+    shouldAct: p[7] === "true",
+    alreadyExpressed: p[8] === "true",
+    status: (p[9] as Alarm["status"]) ?? "",
+    bond: p[10] ?? "0",
+  };
+}
+
+export async function readHostState(hostAddress: string): Promise<HostState> {
   const client = await readClient();
   const raw = (await client.readContract({
-    address: HOST_VAULT_ADDRESS as `0x${string}`,
+    address: hostAddress as `0x${string}`,
     functionName: "get_state",
     args: [],
   })) as string;
@@ -124,6 +150,29 @@ export async function readGenome(): Promise<GenomeClause[]> {
   return parseGenome(raw);
 }
 
+/** Recent alarms, newest first, capped so a long history doesn't mean N sequential reads on every page load. */
+export async function readRecentAlarms(limit = 10): Promise<Alarm[]> {
+  const client = await readClient();
+  const countRaw = (await client.readContract({
+    address: HELIX_ADDRESS as `0x${string}`,
+    functionName: "get_alarm_count",
+    args: [],
+  })) as string | number | bigint;
+  const count = Number(countRaw);
+  if (!count) return [];
+  const start = Math.max(1, count - limit + 1);
+  const ids = Array.from({ length: count - start + 1 }, (_, i) => count - i);
+  const rows = await Promise.all(
+    ids.map((id) =>
+      client
+        .readContract({ address: HELIX_ADDRESS as `0x${string}`, functionName: "get_alarm", args: [String(id)] })
+        .then((raw) => parseAlarm(raw as string))
+        .catch(() => null),
+    ),
+  );
+  return rows.filter((a): a is Alarm => a !== null);
+}
+
 /**
  * HostVault.approve never emits an internal message, so a flat network-price
  * fee estimate is enough.
@@ -133,6 +182,7 @@ async function writeWithFlatFees(
   address: string,
   functionName: string,
   kwargs: object,
+  value: bigint = 0n,
 ): Promise<string> {
   const estimate = await client.estimateTransactionFees();
   const fees = { distribution: estimate.distribution, feeValue: estimate.feeValue };
@@ -141,28 +191,28 @@ async function writeWithFlatFees(
     functionName,
     args: [],
     kwargs,
-    value: 0n,
+    value,
     fees,
   } as never);
   return hash as unknown as string;
 }
 
 /**
- * Helix.ingest_threat conditionally emits an internal message to
- * HostVault.apply_mutation (and, on GROW_ORGAN, deploys + registers a
- * Watchdog). A flat fee estimate has no budget allocated for that internal
- * message and the write reverts with "fee no_matching_allocation # internal"
- * - confirmed live. estimateTransactionFeesForWrite runs a real simulation of
- * this exact call first, so its returned messageAllocations covers whatever
- * the leader's run actually triggers.
+ * raise_alarm conditionally emits an internal message to HostVault.
+ * apply_mutation (and, on GROW_ORGAN, deploys + registers a Watchdog), and
+ * on a correct alarm also emits a value-transfer refund - none of that has
+ * a fixed budget a flat estimate could cover. estimateTransactionFeesForWrite
+ * runs a real simulation of this exact call first, so its returned
+ * messageAllocations covers whatever the leader's run actually triggers.
  */
 async function writeWithSimulatedFees(
   client: WriteClient,
   address: string,
   functionName: string,
   kwargs: object,
+  value: bigint = 0n,
 ): Promise<string> {
-  const callArgs = { address: address as `0x${string}`, functionName, args: [], kwargs, value: 0n };
+  const callArgs = { address: address as `0x${string}`, functionName, args: [], kwargs, value };
   const estimate = await client.estimateTransactionFeesForWrite(callArgs as never);
   const fees = {
     distribution: estimate.distribution,
@@ -174,13 +224,25 @@ async function writeWithSimulatedFees(
 }
 
 /** HostVault.approve(spender, amount). Reverts FROZEN_BY_HELIX once spliced. */
-export async function approve(client: WriteClient, spender: string, amountWei: bigint): Promise<string> {
-  return writeWithFlatFees(client, HOST_VAULT_ADDRESS, "approve", { spender, amount: amountWei });
+export async function approve(client: WriteClient, hostAddress: string, spender: string, amountWei: bigint): Promise<string> {
+  return writeWithFlatFees(client, hostAddress, "approve", { spender, amount: amountWei });
 }
 
-/** Helix.ingest_threat(url_a, url_b) — runs the leader/validator consensus round. */
-export async function ingestThreat(client: WriteClient, urlA: string, urlB: string): Promise<string> {
-  return writeWithSimulatedFees(client, HELIX_ADDRESS, "ingest_threat", { url_a: urlA, url_b: urlB });
+/** Helix.raise_alarm(host, threat_url, evidence_url) - payable, bond in GEN wei. */
+export async function raiseAlarm(
+  client: WriteClient,
+  hostAddress: string,
+  threatUrl: string,
+  evidenceUrl: string,
+  bondWei: bigint,
+): Promise<string> {
+  return writeWithSimulatedFees(
+    client,
+    HELIX_ADDRESS,
+    "raise_alarm",
+    { host: hostAddress, threat_url: threatUrl, evidence_url: evidenceUrl },
+    bondWei,
+  );
 }
 
 export type JuryTally = { agree: number; total: number };
@@ -199,14 +261,13 @@ export type JuryTally = { agree: number; total: number };
  * studio-dev enforces a hard per-account RPC rate limit (500 req/hour,
  * confirmed empirically) and a tight poll interval burns through it fast -
  * a single finalization wait can otherwise cost dozens of requests on its
- * own, on top of whatever else is polling get_state/get_status in the
- * background. 10s keeps one write's wait under ~30 requests even in the
- * worst case (5 minutes to finalize).
+ * own, on top of whatever else is polling live state in the background.
+ * 10s keeps one write's wait under ~30 requests even in the worst case
+ * (5 minutes to finalize).
  *
  * Returns the real on-chain jury tally read off the finalized receipt's
  * lastRound (how many of the round's validators actually voted AGREE), or
- * null when the receipt carries no round data to count - the Theater's dot
- * row uses this instead of a hardcoded number.
+ * null when the receipt carries no round data to count.
  */
 export async function waitForTx(hash: string): Promise<JuryTally | null> {
   const client = await readClient();
@@ -257,6 +318,8 @@ export function readableError(err: unknown): string {
           .join(" | ") || String(err);
   if (raw.includes("FROZEN_BY_HELIX")) return "FROZEN_BY_HELIX";
   if (raw.includes("above max_approval")) return "above max_approval";
+  if (raw.includes("bond below MIN_BOND")) return "Bond too small - raise the amount and try again.";
+  if (raw.includes("host not registered")) return "That host isn't registered with this Helix.";
   if (raw.includes("evidence url")) return raw.match(/evidence url[^"\\]*/)?.[0] ?? raw;
   if (/user rejected|denied|4001/i.test(raw)) return "Signature rejected.";
   if (/rate limit exceeded/i.test(raw)) {

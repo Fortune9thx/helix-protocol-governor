@@ -1,28 +1,43 @@
 """Every validator independently fetches caller-supplied evidence URLs, so
-ingest_threat must refuse anything pointed at localhost/private/loopback
+raise_alarm must refuse anything pointed at localhost/private/loopback
 infrastructure before it ever reaches gl.nondet.web.* - this is deterministic
 string validation, runs before the nondet block, and needs no web/LLM mocks
 since it should raise before any fetch is attempted.
+
+raise_alarm checks host-registered and bond-sufficient before URL validation
+(see contracts/helix.py), so these tests register a real host and pass a
+sufficient bond first - otherwise every case would revert on the wrong
+precondition and never actually exercise the SSRF guard.
 """
 
 import json
 
 import pytest
 
+from conftest import to_hex
+
 WATCHDOG_PLACEHOLDER_CODE = "# placeholder watchdog source for constructor arg\n"
-HOST_PLACEHOLDER = "0x" + "22" * 20
 REGISTRY_PLACEHOLDER = "0x" + "33" * 20
+BOND = 10**16  # matches MIN_BOND in contracts/helix.py
 
 
-def _deploy_helix(direct_deploy, direct_vm, direct_owner):
+def _deploy_ward(direct_deploy, direct_vm, direct_owner):
     direct_vm.sender = direct_owner
-    return direct_deploy(
+    helix = direct_deploy(
         "contracts/helix.py",
-        HOST_PLACEHOLDER,
         REGISTRY_PLACEHOLDER,
         WATCHDOG_PLACEHOLDER_CODE,
         sdk_version="v0.3.0-rc7",
     )
+    host = direct_deploy(
+        "contracts/host_vault.py",
+        "unlimited approvals allowed. owner may withdraw. no freeze.",
+        sdk_version="v0.3.0-rc7",
+    )
+    direct_vm.sender = direct_owner
+    host.set_governor(to_hex(helix))
+    helix.register_host(to_hex(host), "Host")
+    return helix, host
 
 
 BLOCKED_URLS = [
@@ -44,27 +59,31 @@ BLOCKED_URLS = [
 def test_blocked_evidence_url_reverts_before_any_fetch(
     direct_vm, direct_deploy, direct_owner, bad_url
 ):
-    contract = _deploy_helix(direct_deploy, direct_vm, direct_owner)
+    helix, host = _deploy_ward(direct_deploy, direct_vm, direct_owner)
     direct_vm.sender = direct_owner
+    direct_vm.value = BOND
     # No mocks registered at all - if the contract tried to fetch, this
     # would raise MockNotFoundError instead of the expected validation error.
     with direct_vm.expect_revert():
-        contract.ingest_threat(bad_url, "")
+        helix.raise_alarm(to_hex(host), bad_url, "")
+    direct_vm.value = 0
 
 
 def test_blocked_url_as_second_argument_also_reverts(
     direct_vm, direct_deploy, direct_owner
 ):
-    contract = _deploy_helix(direct_deploy, direct_vm, direct_owner)
+    helix, host = _deploy_ward(direct_deploy, direct_vm, direct_owner)
     direct_vm.sender = direct_owner
+    direct_vm.value = BOND
     with direct_vm.expect_revert():
-        contract.ingest_threat("https://example.com/advisory.html", "http://localhost/x")
+        helix.raise_alarm(to_hex(host), "https://example.com/advisory.html", "http://localhost/x")
+    direct_vm.value = 0
 
 
 def test_legitimate_https_url_passes_validation(
     direct_vm, direct_deploy, direct_owner
 ):
-    contract = _deploy_helix(direct_deploy, direct_vm, direct_owner)
+    helix, host = _deploy_ward(direct_deploy, direct_vm, direct_owner)
     direct_vm.sender = direct_owner
     direct_vm.mock_web(
         r"example\.com",
@@ -83,6 +102,8 @@ def test_legitimate_https_url_passes_validation(
     )
     # Should reach the leader/validator round rather than reverting at
     # validation - proves legitimate public URLs are never blocked.
-    contract.ingest_threat("https://example.com/advisory.html", "")
-    status = contract.get_status().split("||")
-    assert status[1] == "noise"
+    direct_vm.value = BOND
+    helix.raise_alarm(to_hex(host), "https://example.com/advisory.html", "")
+    direct_vm.value = 0
+    status = helix.get_status().split("||")
+    assert status[0] == "1"  # alarm_count

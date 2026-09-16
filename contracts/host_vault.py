@@ -136,3 +136,23 @@ class HostVault(gl.contract.Contract):
     @gl.public.view
     def last_mutation_rationale(self) -> str:
         return self.last_mutation
+
+    # ---------- HostIface ----------
+    # The minimal interface a governing Helix relies on to manage this
+    # vault as one of potentially several hosts it governs:
+    # apply_mutation(...) (governor-only, above), is_frozen(), version(),
+    # get_governor(). Named get_governor()/is_frozen() rather than bare
+    # governor()/frozen() because those names are already the storage
+    # attributes themselves - a same-named method would shadow the field.
+
+    @gl.public.view
+    def is_frozen(self) -> bool:
+        return self.frozen
+
+    @gl.public.view
+    def version(self) -> u256:
+        return self.genome_version
+
+    @gl.public.view
+    def get_governor(self) -> Address:
+        return self.governor

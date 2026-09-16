@@ -6,18 +6,27 @@
  * write-client construction live in wallet.tsx/wagmi-config.ts (RainbowKit +
  * wagmi, matching every other GenLayer build here) - this file no longer
  * touches window.ethereum directly.
+ *
+ * Contract addresses come from addresses.json (written by scripts/deploy.ts)
+ * - the one source of truth for the registry/Helix/host addresses, so .env,
+ * README, and Vercel env can never drift from each other or from what's
+ * actually deployed.
  */
+import addressesFile from "../../addresses.json";
 
 const env = import.meta.env as Record<string, string | undefined>;
 
-export const CHAIN_NAME = env["VITE_GENLAYER_CHAIN"] ?? "studioDevnet";
-export const HOST_VAULT_ADDRESS = env["VITE_HOST_VAULT_ADDRESS"] ?? "";
-export const HELIX_ADDRESS = env["VITE_HELIX_ADDRESS"] ?? "";
-export const GENOME_REGISTRY_ADDRESS = env["VITE_GENOME_REGISTRY_ADDRESS"] ?? "";
+export const CHAIN_NAME = env["VITE_GENLAYER_CHAIN"] ?? addressesFile.network.chain;
 export const EVIDENCE_DRAIN_URL = env["VITE_EVIDENCE_DRAIN_URL"] ?? "";
 export const EVIDENCE_PHISH_URL = env["VITE_EVIDENCE_PHISH_URL"] ?? "";
 
-export const isConfigured = () => HOST_VAULT_ADDRESS !== "" && HELIX_ADDRESS !== "";
+export type HostEntry = { address: string; label: string };
+
+export const GENOME_REGISTRY_ADDRESS = addressesFile.genomeRegistry;
+export const HELIX_ADDRESS = addressesFile.helix;
+export const HOSTS: HostEntry[] = addressesFile.hosts;
+
+export const isConfigured = () => HELIX_ADDRESS !== "" && HOSTS.length > 0;
 
 export async function getChain() {
   const chains = await import("genlayer-js/chains");
