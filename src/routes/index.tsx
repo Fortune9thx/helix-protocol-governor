@@ -1,6 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import portrait from "../assets/helix-portrait.jpg";
 import { useHelix } from "../lib/helix-state";
 import { useHelixWallet } from "../lib/wallet";
 import { approve, readableError, waitForTx } from "../lib/helix-contracts";
@@ -29,7 +28,7 @@ export const Route = createFileRoute("/")({
 const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
 
 function Theater() {
-  const { spliced, host, status, refresh, ingesting, jury } = useHelix();
+  const { spliced, host, status, refresh } = useHelix();
   const { client, address, openConnectModal } = useHelixWallet();
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -46,28 +45,6 @@ function Theater() {
     }
     prevSpliced.current = spliced;
   }, [spliced]);
-
-  // Jury dots should only replay their "tick in" animation right after a
-  // real ingest finishes, never on an ordinary re-render or on load from a
-  // stored tally.
-  const prevIngesting = useRef(ingesting);
-  const [tallyKey, setTallyKey] = useState(0);
-  useEffect(() => {
-    if (!ingesting && prevIngesting.current) {
-      setTallyKey((k) => k + 1);
-    }
-    prevIngesting.current = ingesting;
-  }, [ingesting]);
-
-  // Pause the dither portrait's scanline while the tab is hidden.
-  const [tabHidden, setTabHidden] = useState(false);
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const onVisibility = () => setTabHidden(document.visibilityState === "hidden");
-    onVisibility();
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
 
   async function onApprove() {
     if (!client || !address) {
