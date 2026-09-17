@@ -75,7 +75,7 @@ function Theater() {
   const lastTx = note ? note.replace("Approval ", "").replace(".", "") : "—";
 
   return (
-    <main className="relative flex min-h-screen flex-col overflow-hidden bg-background px-5 pt-24 pb-24 text-foreground md:h-screen md:px-10 md:pt-28 md:pb-20">
+    <main className="relative flex min-h-screen flex-col overflow-y-auto bg-background px-5 pt-24 pb-24 text-foreground md:h-screen md:px-10 md:pt-28 md:pb-20">
       <section className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col">
         <div className="flex flex-1 items-center justify-between gap-8">
           <div className="min-w-0 flex-1">
