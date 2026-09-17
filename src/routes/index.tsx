@@ -80,7 +80,7 @@ function Theater() {
             <p className="font-mono text-[10px] text-muted-foreground uppercase">STUDIO-DEV — 61997 / GEN {status?.generation ?? "0"}</p>
             <h1 className="mt-5 text-[25vw] leading-[0.72] text-foreground sm:text-[20vw] md:text-[15.5vw] lg:text-[14vw]">HELIX</h1>
             <p className="mt-6 font-mono text-[10px] text-muted-foreground uppercase md:text-xs">AUTONOMOUS PROTOCOL — GENOME GOVERNOR</p>
-            <div className="mt-8 flex items-center gap-5">
+            <div className="mt-8 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-5">
               <Button
             type="button"
             onClick={() => void onApprove()}
@@ -91,11 +91,11 @@ function Theater() {
               {spliced ? "FROZEN BY HELIX" : pending ? "APPROVING" : "Approve 100 ETH"}
             </span>
               </Button>
-              <span className="max-w-sm font-mono text-[10px] text-muted-foreground uppercase">HostVault {version} · {line}</span>
+              <span className="max-w-sm font-mono text-[9px] text-muted-foreground uppercase sm:text-[10px]">HostVault {version} · {line}</span>
             </div>
           </div>
 
-          <div className="flex w-28 shrink-0 flex-col items-center gap-5 md:w-56 lg:w-72">
+          <div className="flex w-24 shrink-0 flex-col items-center gap-5 sm:w-32 md:w-56 lg:w-72">
             <PixelGlyph
               key={`splice-${spliceFlipKey}`}
               kind={spliced ? "dead" : "live"}

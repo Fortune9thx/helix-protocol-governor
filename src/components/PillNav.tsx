@@ -21,7 +21,7 @@ export function PillNav() {
             <HelixMark className="h-5 w-5" />
             <span className="text-sm font-bold">HELIX</span>
           </Link>
-          <div className="flex items-center gap-4 md:gap-7">
+          <div className="hidden items-center gap-4 min-[360px]:flex md:gap-7">
             {items.map((i) => (
               <Link
                 key={i.to}
