@@ -89,7 +89,7 @@ function Dossier() {
       <div>
       <div className="grid gap-8 md:grid-cols-2">
         <label className="block">
-          <span className="font-mono text-xs tracking-[0.2em] text-ink/50 uppercase">
+          <span className="font-mono text-[10px] text-muted-foreground uppercase">
             Threat URL
           </span>
           <input
@@ -100,7 +100,7 @@ function Dossier() {
           />
         </label>
         <label className="block">
-          <span className="font-mono text-xs tracking-[0.2em] text-ink/50 uppercase">
+          <span className="font-mono text-[10px] text-muted-foreground uppercase">
             Evidence URL
           </span>
           <input
