@@ -5,6 +5,7 @@ import { useHelixWallet } from "../lib/wallet";
 import { approve, readableError, waitForTx } from "../lib/helix-contracts";
 import { Button } from "../components/ui/button";
 import { PixelGlyph } from "../components/PixelGlyph";
+import { JuryDots } from "../components/JuryDots";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -28,7 +29,7 @@ export const Route = createFileRoute("/")({
 const APPROVE_AMOUNT_WEI = 100n * 10n ** 18n;
 
 function Theater() {
-  const { hosts, selectedHost, setSelectedHost, spliced, hostStates, status, refresh } = useHelix();
+  const { hosts, selectedHost, setSelectedHost, spliced, hostStates, status, refresh, ingesting, jury } = useHelix();
   const { client, address, openConnectModal } = useHelixWallet();
   const [pending, setPending] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -78,7 +79,10 @@ function Theater() {
       <section className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col">
         <div className="flex flex-1 items-center justify-between gap-8">
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-[10px] text-muted-foreground uppercase">STUDIO-DEV — 61997 / GEN {status?.generation ?? "0"}</p>
+            <p className="font-mono text-[10px] text-muted-foreground uppercase">
+              STUDIO-DEV — 61997 / GEN {status?.generation ?? "0"}
+              {ingesting && <span className="ml-3 text-law">· ALARM IN FLIGHT ON DOSSIER</span>}
+            </p>
             <h1 className="mt-5 text-[25vw] leading-[0.72] text-foreground sm:text-[20vw] md:text-[15.5vw] lg:text-[14vw]">HELIX</h1>
             <p className="mt-6 font-mono text-[10px] text-muted-foreground uppercase md:text-xs">AUTONOMOUS PROTOCOL — GENOME GOVERNOR</p>
 
@@ -125,6 +129,7 @@ function Theater() {
               className={`w-full text-foreground ${spliced ? "helix-glitch-once" : "helix-float"}`}
             />
             <p key={`status-${spliceFlipKey}`} className="number-tick font-mono text-[10px] text-muted-foreground uppercase">PATIENT {spliced ? "DEAD" : "LIVE"}</p>
+            <JuryDots tally={jury} className="mt-1" />
           </div>
         </div>
 

@@ -6,6 +6,9 @@ import { useHelixWallet } from "../lib/wallet";
 import { raiseAlarm, readableError, readRecentAlarms, waitForTx, type Alarm } from "../lib/helix-contracts";
 import { Button } from "../components/ui/button";
 import { PixelGlyph } from "../components/PixelGlyph";
+import { JuryDots } from "../components/JuryDots";
+
+const MIN_BOND_GEN = 0.01;
 
 export const Route = createFileRoute("/dossier")({
   head: () => ({
@@ -28,7 +31,7 @@ export const Route = createFileRoute("/dossier")({
 const DEFAULT_BOND_GEN = "0.01";
 
 function Dossier() {
-  const { hosts, selectedHost, setSelectedHost, refresh, setIngesting, recordJury } = useHelix();
+  const { hosts, selectedHost, setSelectedHost, refresh, setIngesting, recordJury, jury } = useHelix();
   const { client, openConnectModal } = useHelixWallet();
 
   const [threat, setThreat] = useState("");
@@ -64,6 +67,9 @@ function Dossier() {
       setIngesting(false);
     }
   }
+
+  const bondNumber = Number(bond);
+  const bondInvalid = bond.trim() === "" || Number.isNaN(bondNumber) || bondNumber < MIN_BOND_GEN;
 
   const dump = failure ? `error        : ${failure}` : null;
   const activeStep = pending?.startsWith("submitted")
@@ -107,8 +113,17 @@ function Dossier() {
           <div>
             <div className="grid gap-8 md:grid-cols-2">
               <label className="block">
-                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                <span className="flex items-center justify-between font-mono text-[10px] text-muted-foreground uppercase">
                   Threat URL
+                  {EVIDENCE_DRAIN_URL && (
+                    <button
+                      type="button"
+                      onClick={() => setThreat(EVIDENCE_DRAIN_URL)}
+                      className="text-[9px] text-muted-foreground underline decoration-line underline-offset-2 hover:text-foreground"
+                    >
+                      use sample
+                    </button>
+                  )}
                 </span>
                 <input
                   value={threat}
@@ -118,8 +133,17 @@ function Dossier() {
                 />
               </label>
               <label className="block">
-                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                <span className="flex items-center justify-between font-mono text-[10px] text-muted-foreground uppercase">
                   Evidence URL
+                  {EVIDENCE_PHISH_URL && (
+                    <button
+                      type="button"
+                      onClick={() => setEvidence(EVIDENCE_PHISH_URL)}
+                      className="text-[9px] text-muted-foreground underline decoration-line underline-offset-2 hover:text-foreground"
+                    >
+                      use sample
+                    </button>
+                  )}
                 </span>
                 <input
                   value={evidence}
@@ -140,17 +164,26 @@ function Dossier() {
                 type="number"
                 min="0.01"
                 step="0.01"
-                className="mt-3 w-full border-b border-line bg-transparent pb-3 text-base text-foreground outline-none focus:border-foreground"
+                aria-invalid={bondInvalid}
+                className={`mt-3 w-full border-b bg-transparent pb-3 text-base text-foreground outline-none focus:border-foreground ${
+                  bondInvalid ? "border-destructive" : "border-line"
+                }`}
               />
-              <span className="mt-2 block font-mono text-[9px] text-muted-foreground uppercase">
-                Refunded if correct. Slashed to treasury if noise.
+              <span
+                className={`mt-2 block font-mono text-[9px] uppercase ${
+                  bondInvalid ? "text-destructive" : "text-muted-foreground"
+                }`}
+              >
+                {bondInvalid
+                  ? `Below the ${MIN_BOND_GEN} GEN minimum — the contract will reject this.`
+                  : "Refunded if correct. Slashed to treasury if noise."}
               </span>
             </label>
 
             <Button
               type="button"
               onClick={() => void onRaiseAlarm()}
-              disabled={pending !== null}
+              disabled={pending !== null || bondInvalid}
               className={`helix-action mt-10 ${pending ? "is-pending" : ""}`}
             >
               {pending ? "PROCESSING" : "Raise alarm"}
@@ -169,7 +202,12 @@ function Dossier() {
           </div>
         </div>
 
-        <div className="mt-12 grid border-t border-line md:grid-cols-4">
+        <div className="mt-12 flex items-center justify-between border-t border-line pt-5">
+          <p className="font-mono text-[9px] text-muted-foreground uppercase">VALIDATOR VOTE — LAST FINALIZED WRITE</p>
+          <JuryDots tally={jury} />
+        </div>
+
+        <div className="grid border-t border-line md:grid-cols-4">
           {[
             ["01", "SHOULD ACT", lastAlarm ? String(lastAlarm.shouldAct) : "—"],
             ["02", "FAMILY", lastAlarm?.family || "—"],
