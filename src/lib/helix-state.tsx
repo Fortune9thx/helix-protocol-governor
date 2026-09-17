@@ -22,8 +22,17 @@ type HelixState = {
   hosts: HostEntry[];
   selectedHost: string;
   setSelectedHost: (address: string) => void;
-  /** Real on-chain frozen state of the selected host only. No local override exists anymore. */
+  /**
+   * Real on-chain frozen state of the selected host, OR the local DEMO
+   * STATE preview flag - but only while no real contracts are configured
+   * (`live` is false). Once `live` is true (any real deployment, including
+   * production), this is always the real hostStates read - the demo
+   * control cannot override actual chain state once there's chain state
+   * to override.
+   */
   spliced: boolean;
+  /** DEMO STATE toggle - a no-op once `live` is true. See `spliced` above. */
+  setSpliced: (v: boolean) => void;
   /** Live state for every registered host, keyed by address. */
   hostStates: Record<string, HostState>;
   /** Live Helix-wide status (alarm/host counts, generation, treasury). */
@@ -45,6 +54,7 @@ const HelixContext = createContext<HelixState>({
   selectedHost: "",
   setSelectedHost: () => {},
   spliced: false,
+  setSpliced: () => {},
   hostStates: {},
   status: null,
   live: false,
@@ -67,6 +77,7 @@ export function HelixProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<HelixStatus | null>(null);
   const [ingesting, setIngesting] = useState(false);
   const [jury, setJury] = useState<JuryTally | null>(null);
+  const [demoPreview, setDemoPreview] = useState(false);
   const live = isConfigured();
   const mounted = useRef(true);
 
@@ -133,7 +144,11 @@ export function HelixProvider({ children }: { children: ReactNode }) {
     };
   }, [live, refresh]);
 
-  const spliced = hostStates[selectedHost]?.frozen === true;
+  // Real chain state always wins once it exists. The DEMO STATE toggle can
+  // only ever be seen when there's nothing real to show instead (no
+  // configured contracts) - it can never flip a genuinely live/unfrozen
+  // host to look frozen, in production or anywhere else with a real deploy.
+  const spliced = live ? hostStates[selectedHost]?.frozen === true : demoPreview;
 
   return (
     <HelixContext.Provider
@@ -142,6 +157,7 @@ export function HelixProvider({ children }: { children: ReactNode }) {
         selectedHost,
         setSelectedHost,
         spliced,
+        setSpliced: setDemoPreview,
         hostStates,
         status,
         live,

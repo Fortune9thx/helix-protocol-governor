@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import barcode from "../assets/helix-barcode.jpg";
 import { EVIDENCE_DRAIN_URL, EVIDENCE_PHISH_URL } from "../lib/genlayer";
 import { useHelix } from "../lib/helix-state";
 import { useHelixWallet } from "../lib/wallet";
 import { raiseAlarm, readableError, readRecentAlarms, waitForTx, type Alarm } from "../lib/helix-contracts";
+import { Button } from "../components/ui/button";
+import { PixelGlyph } from "../components/PixelGlyph";
 
 export const Route = createFileRoute("/dossier")({
   head: () => ({
@@ -64,115 +65,127 @@ function Dossier() {
     }
   }
 
-  const dump = pending
-    ? pending
-    : failure
-      ? `error        : ${failure}`
-      : lastAlarm
-        ? [
-            lastAlarm.alreadyExpressed
-              ? "verdict      : ALREADY LAW - this family was already ruled on, no new splice"
-              : `should_act   : ${lastAlarm.shouldAct}`,
-            `host         : ${lastAlarm.host}`,
-            `family       : ${lastAlarm.family || "—"}`,
-            `patch        : ${lastAlarm.patchId}`,
-            `status       : ${lastAlarm.status}`,
-          ].join("\n")
-        : null;
+  const dump = failure ? `error        : ${failure}` : null;
+  const activeStep = pending?.startsWith("submitted")
+    ? 0
+    : pending?.startsWith("leader")
+      ? 2
+      : pending?.startsWith("finalized")
+        ? 3
+        : -1;
 
   return (
-    <main className="min-h-screen bg-cream px-8 pt-32 pb-36 md:px-14">
-      <h1 className="text-[16vw] leading-[0.84] text-ink md:text-[8vw]">Dossier</h1>
-      <p className="mt-6 max-w-sm text-base text-ink/70">Raise an alarm against a registered host.</p>
-      <div className="mt-8 h-px w-full bg-ink/15" />
+    <main className="min-h-screen bg-background px-5 pt-24 pb-20 text-foreground md:px-10 md:pt-28">
+      <div className="mx-auto w-full max-w-[1600px]">
+        <p className="font-mono text-[10px] text-muted-foreground uppercase">ALARM INTERFACE — EVIDENCE INTAKE</p>
+        <h1 className="mt-5 text-[18vw] leading-[0.78] text-foreground md:text-[11vw]">DOSSIER</h1>
+        <p className="mt-6 font-mono text-[10px] text-muted-foreground uppercase md:text-xs">FILE AN ALARM — VALIDATORS FETCH THE PAGE</p>
 
-      <img
-        src={barcode}
-        alt="Slit-scan barcode rendering of the ingested evidence stream"
-        width={1920}
-        height={960}
-        loading="lazy"
-        className="mt-10 h-[300px] w-full object-cover md:h-[360px]"
-      />
+        {hosts.length > 1 && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {hosts.map((h) => (
+              <button
+                key={h.address}
+                type="button"
+                onClick={() => setSelectedHost(h.address)}
+                className={
+                  "rounded-full border px-3 py-1 font-mono text-[9px] uppercase tracking-[0.1em] transition-colors " +
+                  (h.address === selectedHost
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-line text-muted-foreground hover:border-foreground/50 hover:text-foreground")
+                }
+              >
+                {h.label}
+              </button>
+            ))}
+          </div>
+        )}
 
-      {hosts.length > 1 && (
-        <div className="mt-10 flex flex-wrap gap-2">
-          {hosts.map((h) => (
-            <button
-              key={h.address}
+        <div className="mt-8 h-px w-full bg-line" />
+
+        <div className="mt-12 grid gap-10 lg:grid-cols-[1fr_18rem]">
+          <div>
+            <div className="grid gap-8 md:grid-cols-2">
+              <label className="block">
+                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                  Threat URL
+                </span>
+                <input
+                  value={threat}
+                  onChange={(e) => setThreat(e.target.value)}
+                  placeholder={EVIDENCE_DRAIN_URL || "https://"}
+                  className="mt-3 w-full border-b border-line bg-transparent pb-3 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
+                />
+              </label>
+              <label className="block">
+                <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                  Evidence URL
+                </span>
+                <input
+                  value={evidence}
+                  onChange={(e) => setEvidence(e.target.value)}
+                  placeholder={EVIDENCE_PHISH_URL || "https://"}
+                  className="mt-3 w-full border-b border-line bg-transparent pb-3 text-base text-foreground outline-none placeholder:text-muted-foreground focus:border-foreground"
+                />
+              </label>
+            </div>
+
+            <label className="mt-8 block max-w-xs">
+              <span className="font-mono text-[10px] text-muted-foreground uppercase">
+                Bond (GEN)
+              </span>
+              <input
+                value={bond}
+                onChange={(e) => setBond(e.target.value)}
+                type="number"
+                min="0.01"
+                step="0.01"
+                className="mt-3 w-full border-b border-line bg-transparent pb-3 text-base text-foreground outline-none focus:border-foreground"
+              />
+              <span className="mt-2 block font-mono text-[9px] text-muted-foreground uppercase">
+                Refunded if correct. Slashed to treasury if noise.
+              </span>
+            </label>
+
+            <Button
               type="button"
-              onClick={() => setSelectedHost(h.address)}
-              className={
-                "rounded-full border px-4 py-1.5 font-mono text-xs tracking-[0.15em] uppercase transition-colors " +
-                (h.address === selectedHost
-                  ? "border-ink bg-ink text-cream"
-                  : "border-ink/20 text-ink/60 hover:border-ink/50")
-              }
+              onClick={() => void onRaiseAlarm()}
+              disabled={pending !== null}
+              className={`helix-action mt-10 ${pending ? "is-pending" : ""}`}
             >
-              {h.label}
-            </button>
+              {pending ? "PROCESSING" : "Raise alarm"}
+            </Button>
+
+            <div className="mt-10 grid grid-cols-4 border-t border-line pt-4">
+              {["SIGNED", "FETCH", "JURY", "FINAL"].map((step, index) => (
+                <div key={step} className={`font-mono text-[9px] ${activeStep >= index ? "text-foreground" : "text-muted-foreground"}`}>
+                  <span className="mr-2">{activeStep >= index ? "■" : "□"}</span>{step}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="flex min-h-48 items-center justify-center border-l border-line max-lg:border-l-0 max-lg:border-t max-lg:pt-10">
+            <PixelGlyph kind={pending ? "spinner" : "live"} className={`w-28 text-foreground ${pending ? "pixel-spin" : "helix-float"}`} />
+          </div>
+        </div>
+
+        <div className="mt-12 grid border-t border-line md:grid-cols-4">
+          {[
+            ["01", "SHOULD ACT", lastAlarm ? String(lastAlarm.shouldAct) : "—"],
+            ["02", "FAMILY", lastAlarm?.family || "—"],
+            ["03", "PATCH", lastAlarm?.patchId || "—"],
+            ["04", "ALREADY EXPRESSED", lastAlarm ? String(lastAlarm.alreadyExpressed) : "—"],
+          ].map(([n, label, value]) => (
+            <div key={label} className="border-b border-line py-5 md:border-r md:px-5 md:first:pl-0">
+              <p className="font-mono text-[9px] text-muted-foreground">{n} — {label}</p>
+              <p className={`mt-5 truncate text-sm uppercase ${label === "ALREADY EXPRESSED" && lastAlarm?.alreadyExpressed ? "text-law" : "text-foreground"}`}>
+                {label === "ALREADY EXPRESSED" && lastAlarm?.alreadyExpressed ? "ALREADY LAW" : value}
+              </p>
+            </div>
           ))}
         </div>
-      )}
-
-      <div className="mt-8 grid max-w-4xl gap-8 md:grid-cols-2">
-        <label className="block">
-          <span className="font-mono text-xs tracking-[0.2em] text-ink/50 uppercase">
-            Threat URL
-          </span>
-          <input
-            value={threat}
-            onChange={(e) => setThreat(e.target.value)}
-            placeholder={EVIDENCE_DRAIN_URL || "https://"}
-            className="mt-3 w-full border-b border-ink/25 bg-transparent pb-3 text-lg tracking-tight text-ink outline-none placeholder:text-ink/25 focus:border-ink"
-          />
-        </label>
-        <label className="block">
-          <span className="font-mono text-xs tracking-[0.2em] text-ink/50 uppercase">
-            Evidence URL (optional)
-          </span>
-          <input
-            value={evidence}
-            onChange={(e) => setEvidence(e.target.value)}
-            placeholder={EVIDENCE_PHISH_URL || "https://"}
-            className="mt-3 w-full border-b border-ink/25 bg-transparent pb-3 text-lg tracking-tight text-ink outline-none placeholder:text-ink/25 focus:border-ink"
-          />
-        </label>
+        {(failure || dump) && <p className="mt-5 max-w-4xl font-mono text-[10px] text-muted-foreground">{failure ?? dump}</p>}
       </div>
-
-      <label className="mt-8 block max-w-xs">
-        <span className="font-mono text-xs tracking-[0.2em] text-ink/50 uppercase">
-          Bond (GEN)
-        </span>
-        <input
-          value={bond}
-          onChange={(e) => setBond(e.target.value)}
-          type="number"
-          min="0.01"
-          step="0.01"
-          className="mt-3 w-full border-b border-ink/25 bg-transparent pb-3 text-lg tracking-tight text-ink outline-none focus:border-ink"
-        />
-        <span className="mt-2 block text-xs text-ink/45">
-          Refunded if the alarm is correct. Slashed to the treasury if it's noise.
-        </span>
-      </label>
-
-      <button
-        type="button"
-        onClick={() => void onRaiseAlarm()}
-        disabled={pending !== null}
-        className="mt-10 rounded-full bg-ink px-8 py-4 text-base tracking-tight text-cream transition-opacity hover:opacity-85"
-      >
-        Raise alarm
-      </button>
-
-      <pre className="mt-10 max-w-3xl overflow-x-auto border-t border-ink/15 pt-6 font-mono text-xs leading-relaxed text-ink/75">
-        {dump ?? [
-          "should_act   : —",
-          "family       : —",
-          "patch        : —",
-        ].join("\n")}
-      </pre>
     </main>
   );
 }

@@ -15,8 +15,9 @@ import "@rainbow-me/rainbowkit/styles.css";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { PillNav } from "../components/PillNav";
-import { HelixProvider } from "../lib/helix-state";
+import { HelixProvider, useHelix } from "../lib/helix-state";
 import { wagmiConfig } from "../lib/wagmi-config";
+import { Button } from "../components/ui/button";
 
 function NotFoundComponent() {
   return (
@@ -85,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "HELIX — Live vault governor" },
       { name: "description", content: "HELIX is a live vault governor: autonomous protocol, genome governor." },
-      
+
       { property: "og:title", content: "HELIX — Live vault governor" },
       { property: "og:description", content: "Autonomous protocol. Genome governor." },
       { property: "og:type", content: "website" },
@@ -97,7 +98,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;500&family=Work+Sans:wght@400;500;600&display=swap",
       },
       {
         rel: "stylesheet",
@@ -127,6 +128,31 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function SpliceControl() {
+  const { spliced, setSpliced, live } = useHelix();
+  // Once real contracts are configured (live === true, true in production),
+  // `spliced` always comes from real chain state and this toggle can no
+  // longer change what's displayed - see helix-state.tsx's `spliced`
+  // derivation. It's only a genuine preview when nothing real is deployed.
+  return (
+    <Button
+      type="button"
+      onClick={() => setSpliced(!spliced)}
+      aria-pressed={spliced}
+      disabled={live}
+      variant="outline"
+      className="fixed bottom-9 right-4 z-40 h-7 rounded-full border-line bg-background px-3 font-mono text-[9px] text-muted-foreground uppercase hover:bg-surface hover:text-foreground disabled:opacity-40 md:bottom-10 md:right-8"
+    >
+      <span
+        className={
+          "h-1.5 w-1.5 " + (spliced ? "bg-law" : "bg-muted-foreground")
+        }
+      />
+      DEMO STATE
+    </Button>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
@@ -138,6 +164,7 @@ function RootComponent() {
             <PillNav />
             {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
             <Outlet />
+            <SpliceControl />
           </HelixProvider>
         </RainbowKitProvider>
       </QueryClientProvider>
