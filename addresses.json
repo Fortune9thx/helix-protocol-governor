@@ -1,19 +1,19 @@
 {
-  "updatedAt": "2026-09-16T07:33:02.050Z",
+  "updatedAt": "2026-09-17T07:21:40.992Z",
   "network": {
     "chain": "studioDevnet",
     "chainId": 61997,
     "rpc": "https://studio-dev.genlayer.com/api"
   },
-  "genomeRegistry": "0x8917000947c06B57CDbc10d79f544445c096913d",
-  "helix": "0x389e4f2B60f451BF6aa70291EB76e551Cc396A71",
+  "genomeRegistry": "0x87168a4e86B03d0611fDfE7e31Ca7525c3B2017D",
+  "helix": "0xCe640627aF3bcefF60Fd401D2D014e7c03Dd49d6",
   "hosts": [
     {
-      "address": "0x01a4295Bd14376efb7e75274497B4918051411B0",
+      "address": "0x720BD90b265bB5D7004a5e51BDb5bb964E6c2CeF",
       "label": "Host A"
     },
     {
-      "address": "0x3dDA908ee7d249695a999D8FC4E4E84b80ad8645",
+      "address": "0xD8621af605a47c56EF839622d1A0f217CCf6eF1D",
       "label": "Host B"
     }
   ]

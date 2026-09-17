@@ -46,7 +46,9 @@ and HELIX cross-contract-calls that specific host's `apply_mutation`:
   native `root.code` upgrade mechanism, live, from inside the write path that decided
   it was necessary.
 - `permit_phishing_kit → GROW_ORGAN` — deploys a fresh `Watchdog` child contract with
-  `gl.contract.deploy` and registers it on the host.
+  `gl.contract.deploy` and registers it on the host. `Watchdog` is a receipt contract,
+  not an active organ: permanent on-chain proof of which family triggered which
+  mutation on which host, not a standalone monitor. See SECURITY.md.
 - `active_exploit_unknown → CONTAIN` — freezes without a code splice, the safe default
   for a family that can't yet be mapped to something more specific.
 - `noise → NONE` — no mutation, and the bond is slashed to Helix's treasury: a false
@@ -80,16 +82,21 @@ that natively supports non-determinism plus consensus.
 
 ## No Safe, no council — what that actually means
 
-Each `HostVault`'s only privileged actor is `governor`, set once at wire time to
-`Helix`'s own contract address. A human can still call `approve`/`withdraw` on an
-unfrozen vault, but the *only* way any vault Helix governs ever gets frozen,
-re-constituted, or spliced is independent validators agreeing, from public evidence,
-that it should be — for that specific host, driven by one shared, permanent record of
-every threat family Helix has ever ruled on. Ethereum's answer to "the vault is under
-active attack" is a human racing to click "pause" in a Safe UI before the drain
-finishes. HELIX's answer is a governor contract that already read the advisory, already
-voted, and will never have to re-litigate the same threat family again on any vault it
-watches.
+Each `HostVault`'s only privileged actor is `governor`, initialized to the deployer
+(`owner`) at genesis and handed off to `Helix`'s own contract address once via
+`set_governor`. That method is governor-only, not owner-or-governor: `owner`'s
+first call succeeds only because `owner == governor` at genesis, and the instant
+governance moves to Helix, `owner` has no standing right left to reclaim, redirect, or
+rotate it again — only whoever currently holds `governor` can hand it off further. A
+human can still call `approve`/`withdraw` on an unfrozen vault (it's still their vault
+and their funds), but after `register_host`, the *only* way that vault ever gets
+frozen, re-constituted, or spliced is independent validators agreeing, from public
+evidence, that it should be — for that specific host, driven by one shared, permanent
+record of every threat family Helix has ever ruled on. Ethereum's answer to "the vault
+is under active attack" is a human racing to click "pause" in a Safe UI before the
+drain finishes. HELIX's answer is a governor contract that already read the advisory,
+already voted, and will never have to re-litigate the same threat family again on any
+vault it watches.
 
 ## What's hardened, not just working
 

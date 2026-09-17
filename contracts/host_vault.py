@@ -42,8 +42,15 @@ class HostVault(gl.contract.Contract):
 
     @gl.public.write
     def set_governor(self, governor: str) -> None:
-        if gl.message.sender_address != self.owner and gl.message.sender_address != self.governor:
-            raise gl.vm.UserError("not authorized")
+        # governor-only, not owner-or-governor: owner is the deployer and is
+        # set as governor once in __init__ for the initial wire-up, but must
+        # never retain a standing right to rotate governance afterward - that
+        # would be an undisclosed human override on top of "the only way this
+        # vault is frozen/mutated is validator consensus" (see SECURITY.md).
+        # The only account that can ever hand off governance is whoever
+        # currently holds it.
+        if gl.message.sender_address != self.governor:
+            raise gl.vm.UserError("not governor")
         self.governor = Address(governor)
         root = gl.storage.Root.get()
         root.upgraders.get().append(Address(governor))

@@ -34,14 +34,41 @@ def test_genesis_state_and_approve_before_mutation(direct_vm, direct_deploy, dir
     assert int(host.get_allowance(to_hex(direct_bob))) == 100 * 10**18
 
 
-def test_set_governor_requires_owner_or_current_governor(
+def test_set_governor_requires_current_governor(
     direct_vm, direct_deploy, direct_owner, direct_bob, direct_charlie
 ):
     host = _deploy_host(direct_deploy, direct_vm, direct_owner)
 
     direct_vm.sender = direct_bob
-    with direct_vm.expect_revert("not authorized"):
+    with direct_vm.expect_revert("not governor"):
         host.set_governor(to_hex(direct_charlie))
+
+
+def test_owner_cannot_rotate_governor_after_handoff(
+    direct_vm, direct_deploy, direct_owner, direct_charlie, direct_bob
+):
+    """The fix for the governance-bypass finding: __init__ sets governor ==
+    owner so the FIRST set_governor call (owner handing off to Helix) still
+    works, but once governor has moved away from owner, owner has no
+    standing right to reclaim or redirect it - only the current governor
+    does. Without this, the deployer would hold a permanent, undisclosed
+    override on top of "the only way this vault is frozen/mutated is
+    validator consensus"."""
+    host = _deploy_host(direct_deploy, direct_vm, direct_owner)
+
+    # Owner == governor at genesis, so this initial handoff succeeds.
+    direct_vm.sender = direct_owner
+    host.set_governor(to_hex(direct_charlie))
+
+    # Owner no longer holds governor - the backdoor is closed.
+    direct_vm.sender = direct_owner
+    with direct_vm.expect_revert("not governor"):
+        host.set_governor(to_hex(direct_bob))
+
+    # The current governor can still hand off deliberately.
+    direct_vm.sender = direct_charlie
+    host.set_governor(to_hex(direct_bob))
+    assert to_hex(host.get_governor()) == to_hex(direct_bob)
 
 
 def test_apply_mutation_freezes_and_bumps_version(
